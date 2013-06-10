@@ -41,9 +41,9 @@ In all cases it is recommended and/or required that the command specified with
 AuthorizedKeysCommand be a shell script that is owned by and only writable by
 root which invokes one of the commands below:
 
-1. Using lookup.sh
+## Using lookup.sh
 
-Usage: lookup.sh URL [USERNAME]
+*Usage: lookup.sh URL [USERNAME]*
 
 URL should be the full URL to /sshkey/lookup on your Django web server running
 the sshkey app.
@@ -59,16 +59,20 @@ curl, are found in $PATH.
 
 This is generally the fastest method.
 
-2. Using lookup.py
+## Using lookup.py
+
+*Usage: lookup.py URL [USERNAME]*
 
 Same as above, but it's all written in Python and doesn't rely on external
 commands.
 
+The parent directory of the sshkey app must be in PYTHONPATH.
+
 This is generally the second fastest method.
 
-3. Using manage.py sshkey\_authorized\_keys\_command
+## Using manage.py sshkey\_authorized\_keys\_command
 
-Usage: PATH\_TO\_DJANGO\_PROJECT/manage.py sshkey\_authorized\_keys\_command [USERNAME]
+*Usage: PATH\_TO\_DJANGO\_PROJECT/manage.py sshkey\_authorized\_keys\_command [USERNAME]*
 
 Same semantics for USERNAME as above.
 
