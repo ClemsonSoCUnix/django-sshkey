@@ -19,11 +19,14 @@ In order to associate an incoming public key with a user you must define
 SSHKEY\_AUTHORIZED\_KEYS\_COMMAND in your project's settings.py.  This should
 be a string containing the command which is run after successful
 authentication, with "{username}" being replaced with the username of the user
-associated with the incoming public key.  For instance:
+associated with the incoming public key.
+
+For instance:
 
 > SSHKEY\_AUTHORIZED\_KEYS\_COMMAND = 'my-command {username}'
 
-will cause keys produced by the below commands to look similar to:
+in settings.py will cause keys produced by the below commands to look similar
+to:
 
 > command="my-command fred" ssh-rsa BLAHBLAHBLAH
 
