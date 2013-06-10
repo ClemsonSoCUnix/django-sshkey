@@ -1,0 +1,120 @@
+diff --git a/auth2-pubkey.c b/auth2-pubkey.c
+index 3ff6faa..61cad6f 100644
+--- a/auth2-pubkey.c
++++ b/auth2-pubkey.c
+@@ -458,11 +458,11 @@ user_key_allowed2(struct passwd *pw, Key *key, char *file)
+ static int
+ user_key_command_allowed2(struct passwd *user_pw, Key *key)
+ {
+-	FILE *f;
++	FILE *f_out, *f_in;
+ 	int ok, found_key = 0;
+ 	struct passwd *pw;
+ 	struct stat st;
+-	int status, devnull, p[2], i;
++	int status, devnull, pipe_in[2], pipe_out[2], i;
+ 	pid_t pid;
+ 	char *username, errmsg[512];
+ 
+@@ -499,8 +499,15 @@ user_key_command_allowed2(struct passwd *user_pw, Key *key)
+ 		goto out;
+ 	}
+ 
+-	if (pipe(p) != 0) {
++	if (pipe(pipe_in) != 0) {
++		error("%s: pipe: %s", __func__, strerror(errno));
++		goto out;
++	}
++
++	if (pipe(pipe_out) != 0) {
+ 		error("%s: pipe: %s", __func__, strerror(errno));
++		close(pipe_in[0]);
++		close(pipe_in[1]);
+ 		goto out;
+ 	}
+ 
+@@ -516,21 +523,18 @@ user_key_command_allowed2(struct passwd *user_pw, Key *key)
+ 	switch ((pid = fork())) {
+ 	case -1: /* error */
+ 		error("%s: fork: %s", __func__, strerror(errno));
+-		close(p[0]);
+-		close(p[1]);
++		close(pipe_in[0]);
++		close(pipe_in[1]);
++		close(pipe_out[0]);
++		close(pipe_out[1]);
+ 		return 0;
+ 	case 0: /* child */
+ 		for (i = 0; i < NSIG; i++)
+ 			signal(i, SIG_DFL);
+ 
+-		if ((devnull = open(_PATH_DEVNULL, O_RDWR)) == -1) {
+-			error("%s: open %s: %s", __func__, _PATH_DEVNULL,
+-			    strerror(errno));
+-			_exit(1);
+-		}
+ 		/* Keep stderr around a while longer to catch errors */
+-		if (dup2(devnull, STDIN_FILENO) == -1 ||
+-		    dup2(p[1], STDOUT_FILENO) == -1) {
++		if (dup2(pipe_in[0], STDIN_FILENO) == -1 ||
++		    dup2(pipe_out[1], STDOUT_FILENO) == -1) {
+ 			error("%s: dup2: %s", __func__, strerror(errno));
+ 			_exit(1);
+ 		}
+@@ -547,11 +551,16 @@ user_key_command_allowed2(struct passwd *user_pw, Key *key)
+ 			    strerror(errno));
+ 			_exit(1);
+ 		}
+-		/* stdin is pointed to /dev/null at this point */
+-		if (dup2(STDIN_FILENO, STDERR_FILENO) == -1) {
++		if ((devnull = open(_PATH_DEVNULL, O_RDWR)) == -1) {
++			error("%s: open %s: %s", __func__, _PATH_DEVNULL,
++			    strerror(errno));
++			_exit(1);
++		}
++		if (dup2(devnull, STDERR_FILENO) == -1) {
+ 			error("%s: dup2: %s", __func__, strerror(errno));
+ 			_exit(1);
+ 		}
++		close(devnull);
+ 
+ 		execl(options.authorized_keys_command,
+ 		    options.authorized_keys_command, user_pw->pw_name, NULL);
+@@ -565,18 +574,32 @@ user_key_command_allowed2(struct passwd *user_pw, Key *key)
+ 
+ 	temporarily_use_uid(pw);
+ 
+-	close(p[1]);
+-	if ((f = fdopen(p[0], "r")) == NULL) {
++	close(pipe_in[0]);
++	close(pipe_out[1]);
++	if ((f_in = fdopen(pipe_in[1], "w")) == NULL) {
+ 		error("%s: fdopen: %s", __func__, strerror(errno));
+-		close(p[0]);
++		close(pipe_in[1]);
++		close(pipe_out[0]);
+ 		/* Don't leave zombie child */
+ 		kill(pid, SIGTERM);
+ 		while (waitpid(pid, NULL, 0) == -1 && errno == EINTR)
+ 			;
+ 		goto out;
+ 	}
+-	ok = check_authkeys_file(f, options.authorized_keys_command, key, pw);
+-	fclose(f);
++	if ((f_out = fdopen(pipe_out[0], "r")) == NULL) {
++		error("%s: fdopen: %s", __func__, strerror(errno));
++		fclose(f_in);
++		close(pipe_out[0]);
++		/* Don't leave zombie child */
++		kill(pid, SIGTERM);
++		while (waitpid(pid, NULL, 0) == -1 && errno == EINTR)
++			;
++		goto out;
++	}
++	key_write(key, f_in);
++	fclose(f_in);
++	ok = check_authkeys_file(f_out, options.authorized_keys_command, key, pw);
++	fclose(f_out);
+ 
+ 	while (waitpid(pid, &status, 0) == -1) {
+ 		if (errno != EINTR) {
