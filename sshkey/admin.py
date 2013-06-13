@@ -5,5 +5,8 @@ class UserKeyAdmin(admin.ModelAdmin):
   search_fields = [
     'user__username',
   ]
+  readonly_fields = [
+    'fingerprint',
+  ]
 
 admin.site.register(UserKey, UserKeyAdmin)
