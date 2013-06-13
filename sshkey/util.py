@@ -7,7 +7,7 @@ sshkey_re = re.compile(r'\s*(?:(?P<options>.*?)\s+)?(?P<type>ssh-\w+)\s+(?P<key>
 def sshkey_fingerprint(key_line):
   match = sshkey_re.match(key_line)
   if not match:
-    return None
+    raise Exception('Key is not in OpenSSH authorized_keys format')
   key = base64.b64decode(match.group('key'))
   fp_plain = hashlib.md5(key).hexdigest()
   return ':'.join(a+b for a,b in zip(fp_plain[::2], fp_plain[1::2]))

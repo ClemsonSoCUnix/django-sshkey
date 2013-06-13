@@ -1,7 +1,6 @@
 from django.db import models
-from django.dispatch import receiver
-from django.db.models.signals import pre_save
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from sshkey.util import sshkey_fingerprint
 
 class UserKey(models.Model):
@@ -18,6 +17,8 @@ class UserKey(models.Model):
   def __unicode__(self):
     return unicode(self.user) + u': ' + self.name
 
-@receiver(pre_save, sender=UserKey, dispatch_uid=__name__ + '.set_fingerprint')
-def set_fingerprint(sender, instance, **kwargs):
-  instance.fingerprint = sshkey_fingerprint(instance.key)
+  def clean(self):
+    try:
+      self.fingerprint = sshkey_fingerprint(self.key)
+    except Exception, e:
+      raise ValidationError('Not a valid SSH key: ' + str(e))
