@@ -7,7 +7,7 @@ class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
   name = models.CharField(max_length=50)
   key = models.TextField(max_length=2000)
-  fingerprint = models.CharField(max_length=47, unique=True, blank=True, db_index=True)
+  fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
 
   class Meta:
     unique_together = [
