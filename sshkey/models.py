@@ -22,3 +22,22 @@ class UserKey(models.Model):
       self.fingerprint = sshkey_fingerprint(self.key)
     except Exception, e:
       raise ValidationError('Not a valid SSH key: ' + str(e))
+
+  def validate_unique(self, exclude=None):
+    if self.pk is None:
+      objects = type(self).objects
+    else:
+      objects = type(self).objects.exclude(pk=self.pk)
+    if exclude is None or 'name' not in exclude:
+      if objects.filter(user=self.user, name=self.name).count():
+        raise ValidationError({'name': ['A key with this name already exists']})
+    if exclude is None or 'key' not in exclude:
+      try:
+        other = objects.get(fingerprint=self.fingerprint, key=self.key)
+        if self.user == other.user:
+          message = 'You already have that key on file (%s)' % other.name
+        else:
+          message = 'Somebody else already has that key on file'
+        raise ValidationError({'key': [message]})
+      except type(self).DoesNotExist:
+        pass
