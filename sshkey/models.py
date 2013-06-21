@@ -30,7 +30,8 @@ class UserKey(models.Model):
       objects = type(self).objects.exclude(pk=self.pk)
     if exclude is None or 'name' not in exclude:
       if objects.filter(user=self.user, name=self.name).count():
-        raise ValidationError({'name': ['A key with this name already exists']})
+        message = 'You already have a key with that name'
+        raise ValidationError({'name': [message]})
     if exclude is None or 'key' not in exclude:
       try:
         other = objects.get(fingerprint=self.fingerprint, key=self.key)
