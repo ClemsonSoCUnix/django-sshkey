@@ -1,0 +1,15 @@
+<h1>My Keys</h1>
+<p><a href="{% url sshkey.views.userkey_add %}">Add Key</a></p>
+<table>
+  <tr>
+    <th>Key</th>
+    <th></th>
+  </tr>
+{% for userkey in userkey_list %}
+  <tr>
+    <td>{{ userkey.name }}</td>
+    <td><a href="{% url sshkey.views.userkey_edit userkey.pk %}">Edit</a></td>
+    <td><a href="{% url sshkey.views.userkey_delete userkey.pk %}">Delete</a></td>
+  </tr>
+{% endfor %}
+</table>
