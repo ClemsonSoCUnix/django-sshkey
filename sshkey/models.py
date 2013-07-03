@@ -21,7 +21,7 @@ class UserKey(models.Model):
     if not exclude or 'key' not in exclude:
       self.key = self.key.strip()
       if len(self.key.splitlines()) > 1:
-        raise ValidationError('Only one line is allowed')
+        raise ValidationError({'key': ['Only one line is allowed']})
 
   def clean(self):
     try:
