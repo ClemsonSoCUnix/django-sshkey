@@ -1,11 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from sshkey.util import sshkey_fingerprint
+from sshkey.util import sshkey_fingerprint, sshkey_re
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
-  name = models.CharField(max_length=50)
+  name = models.CharField(max_length=50, blank=True)
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
 
@@ -28,6 +28,12 @@ class UserKey(models.Model):
       self.fingerprint = sshkey_fingerprint(self.key)
     except Exception, e:
       raise ValidationError('Not a valid SSH key: ' + str(e))
+    if not self.name:
+      m = sshkey_re.match(self.key)
+      comment = m.group('comment')
+      if not comment:
+        raise ValidationError('Name or key comment required')
+      self.name = comment
 
   def validate_unique(self, exclude=None):
     if self.pk is None:
