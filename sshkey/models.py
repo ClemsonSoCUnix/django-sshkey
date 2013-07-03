@@ -17,6 +17,12 @@ class UserKey(models.Model):
   def __unicode__(self):
     return unicode(self.user) + u': ' + self.name
 
+  def clean_fields(self, exclude=None):
+    if not exclude or 'key' not in exclude:
+      self.key = self.key.strip()
+      if len(self.key.splitlines()) > 1:
+        raise ValidationError('Only one line is allowed')
+
   def clean(self):
     try:
       self.fingerprint = sshkey_fingerprint(self.key)
