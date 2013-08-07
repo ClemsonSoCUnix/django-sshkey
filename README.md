@@ -16,19 +16,18 @@ repository.  You should point Django to it in your project's settings.py or
 copy it into your project's directory.
 
 In order to associate an incoming public key with a user you must define
-SSHKEY\_AUTHORIZED\_KEYS\_COMMAND in your project's settings.py.  This should
-be a string containing the command which is run after successful
-authentication, with "{username}" being replaced with the username of the user
-associated with the incoming public key.
+SSHKEY\_AUTHORIZED\_KEYS\_OPTIONS in your project's settings.py.  This should
+be a string containing options accepted by sshd, with "{username}" being
+replaced with the username of the user associated with the incoming public key.
 
 For instance:
 
-> SSHKEY\_AUTHORIZED\_KEYS\_COMMAND = 'my-command {username}'
+> SSHKEY\_AUTHORIZED\_KEYS\_OPTIONS = 'command="my-command {username}",no-pty'
 
 in settings.py will cause keys produced by the below commands to look similar
 to:
 
-> command="my-command fred" ssh-rsa BLAHBLAHBLAH
+> command="my-command fred",no-pty ssh-rsa BLAHBLAHBLAH
 
 assuming the key "BLAHBLAHBLAH" is owned by fred.
 

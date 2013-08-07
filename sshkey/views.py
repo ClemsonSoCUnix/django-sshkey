@@ -5,7 +5,7 @@ from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.conf import settings
+from sshkey import settings
 from sshkey.models import UserKey
 from sshkey.forms import UserKeyForm
 
@@ -22,13 +22,16 @@ def lookup(request):
       keys = UserKey.objects.iterator()
   response = ''
   for key in keys:
-    try:
+    if settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS:
+      options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS.format(
+        username=key.user.username) + ' '
+    elif settings.SSHKEY_AUTHORIZED_KEYS_COMMAND:
       options = 'command="%s" ' % (
         settings.SSHKEY_AUTHORIZED_KEYS_COMMAND
           .format(username=key.user.username)
           .replace('"', r'\"')
       )
-    except AttributeError:
+    else:
       options = ''
     response += options + key.key + '\n'
   return HttpResponse(response, mimetype='text/plain')
