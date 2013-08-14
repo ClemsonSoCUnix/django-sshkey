@@ -5,6 +5,7 @@ from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from django.utils.http import is_safe_url
 from sshkey import settings
 from sshkey.models import UserKey
 from sshkey.forms import UserKeyForm
@@ -54,7 +55,11 @@ def userkey_add(request):
     form = UserKeyForm(request.POST, instance=userkey)
     if form.is_valid():
       form.save()
-      return HttpResponseRedirect(reverse('sshkey.views.userkey_list'))
+      default_redirect = reverse('sshkey.views.userkey_list')
+      url = request.GET.get('next', default_redirect)
+      if not is_safe_url(url=url, host=request.get_host()):
+        url = default_redirect
+      return HttpResponseRedirect(url)
   else:
     form = UserKeyForm()
   return render_to_response(
@@ -73,7 +78,11 @@ def userkey_edit(request, pk):
     form = UserKeyForm(request.POST, instance=userkey)
     if form.is_valid():
       form.save()
-      return HttpResponseRedirect(reverse('sshkey.views.userkey_list'))
+      default_redirect = reverse('sshkey.views.userkey_list')
+      url = request.GET.get('next', default_redirect)
+      if not is_safe_url(url=url, host=request.get_host()):
+        url = default_redirect
+      return HttpResponseRedirect(url)
   else:
     form = UserKeyForm(instance=userkey)
   return render_to_response(
