@@ -2,7 +2,7 @@ import base64
 import hashlib
 import re
 
-sshkey_re = re.compile(r'\s*(?:(?P<options>.*?)\s+)?(?P<type>ssh-\w+)\s+(?P<key>\S+)(?:\s+(?P<comment>\S+))?\s*$')
+sshkey_re = re.compile(r'\s*(?P<type>ssh-\w+)\s+(?P<key>\S+)(?:\s+(?P<comment>\S+))?\s*$')
 
 def sshkey_fingerprint(key_line):
   match = sshkey_re.match(key_line)
