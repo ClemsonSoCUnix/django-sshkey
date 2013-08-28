@@ -1,17 +1,3 @@
-import base64
-import hashlib
-import re
-
-sshkey_re = re.compile(r'\s*(?P<type>ssh-\w+)\s+(?P<key>\S+)(?:\s+(?P<comment>\S+))?\s*$')
-
-def sshkey_fingerprint(key_line):
-  match = sshkey_re.match(key_line)
-  if not match:
-    raise Exception('Key is not in OpenSSH authorized_keys format')
-  key = base64.b64decode(match.group('key'))
-  fp_plain = hashlib.md5(key).hexdigest()
-  return ':'.join(a+b for a,b in zip(fp_plain[::2], fp_plain[1::2]))
-
 def lookup_command(args):
   import sys
   import urllib

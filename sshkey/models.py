@@ -1,7 +1,16 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from sshkey.util import sshkey_fingerprint, sshkey_re
+import base64
+import hashlib
+import re
+
+sshkey_re = re.compile(r'(?P<type>[\w-]+)\s+(?P<b64key>\S+)(?:\s+(?P<comment>\S+))?$')
+
+def sshkey_fingerprint(b64key):
+  key = base64.b64decode(b64key)
+  fp_plain = hashlib.md5(key).hexdigest()
+  return ':'.join(a+b for a,b in zip(fp_plain[::2], fp_plain[1::2]))
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -20,16 +29,17 @@ class UserKey(models.Model):
   def clean_fields(self, exclude=None):
     if not exclude or 'key' not in exclude:
       self.key = self.key.strip()
-      if len(self.key.splitlines()) > 1:
-        raise ValidationError({'key': ['Only one line is allowed']})
 
   def clean(self):
+    m = sshkey_re.match(self.key)
+    errmsg = 'Key is not a valid SSH protocol 2 base64-encoded key'
+    if not m:
+      raise ValidationError(errmsg)
     try:
-      self.fingerprint = sshkey_fingerprint(self.key)
-    except Exception, e:
-      raise ValidationError('Not a valid SSH key: ' + str(e))
+      self.fingerprint = sshkey_fingerprint(m.group('b64key'))
+    except TypeError:
+      raise ValidationError(errmsg)
     if not self.name:
-      m = sshkey_re.match(self.key)
       comment = m.group('comment')
       if not comment:
         raise ValidationError('Name or key comment required')
