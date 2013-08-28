@@ -24,12 +24,16 @@ class UserKeyAdmin(admin.ModelAdmin):
     'user',
     'name',
     'fingerprint',
+    'created',
+    'last_modified',
   ]
   search_fields = [
     'user__username',
   ]
   readonly_fields = [
     'fingerprint',
+    'created',
+    'last_modified',
   ]
 
 admin.site.register(UserKey, UserKeyAdmin)

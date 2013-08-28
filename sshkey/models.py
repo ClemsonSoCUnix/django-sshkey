@@ -34,6 +34,8 @@ class UserKey(models.Model):
   name = models.CharField(max_length=50, blank=True)
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
+  created = models.DateTimeField(auto_now_add=True, null=True)
+  last_modified = models.DateTimeField(auto_now=True, null=True)
 
   class Meta:
     unique_together = [
