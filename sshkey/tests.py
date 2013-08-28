@@ -232,13 +232,13 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertEqual(response.status_code, 200)
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
-    actual_content = response.content.strip().split('\n')
-    correct_content = [
+    actual_content = set(response.content.strip().split('\n'))
+    correct_content = set((
       'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
       'command="user1" ' + open(self.key2_path + '.pub').read().strip(),
       'command="user2" ' + open(self.key3_path + '.pub').read().strip(),
-    ]
-    self.assertEqual(sorted(actual_content), sorted(correct_content))
+    ))
+    self.assertEqual(actual_content, correct_content)
 
   def test_lookup_by_fingerprint(self):
     client = Client()
@@ -249,11 +249,11 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
     username = self.user1.username
-    actual_content = response.content.strip().split('\n')
-    correct_content = [
+    actual_content = set(response.content.strip().split('\n'))
+    correct_content = set((
       'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
-    ]
-    self.assertEqual(sorted(actual_content), sorted(correct_content))
+    ))
+    self.assertEqual(actual_content, correct_content)
 
   def test_lookup_by_username_single_result(self):
     client = Client()
@@ -264,11 +264,11 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
     body = open(self.key1_path + '.pub').read().strip()
-    actual_content = response.content.strip().split('\n')
-    correct_content = [
+    actual_content = set(response.content.strip().split('\n'))
+    correct_content = set((
       'command="user2" ' + open(self.key3_path + '.pub').read().strip(),
-    ]
-    self.assertEqual(sorted(actual_content), sorted(correct_content))
+    ))
+    self.assertEqual(actual_content, correct_content)
 
   def test_lookup_by_username_multiple_results(self):
     client = Client()
@@ -279,12 +279,12 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
     body = open(self.key1_path + '.pub').read().strip()
-    actual_content = response.content.strip().split('\n')
-    correct_content = [
+    actual_content = set(response.content.strip().split('\n'))
+    correct_content = set((
       'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
       'command="user1" ' + open(self.key2_path + '.pub').read().strip(),
-    ]
-    self.assertEqual(sorted(actual_content), sorted(correct_content))
+    ))
+    self.assertEqual(actual_content, correct_content)
 
   def test_lookup_nonexist_fingerprint(self):
     client = Client()
