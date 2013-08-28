@@ -105,6 +105,14 @@ class UserKeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
+  def test_invalid_key_fails(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = 'ssh-rsa invalid',
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
   def test_key_with_options_fails(self):
     key = UserKey(
       user = self.user1,
