@@ -4,4 +4,4 @@ git add sshkey/__init__.py
 git ci -m 'bump version'
 python setup.py sdist
 git flow release finish x.y.z
-git push origin x.y.z
+git push origin master x.y.z
