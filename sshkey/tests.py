@@ -105,6 +105,23 @@ class UserKeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
+  def test_key_with_options_fails(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = 'command="foobar" ' + open(self.key1_path+'.pub').read(),
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
+  def test_multiple_keys_fails(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read() \
+          + open(self.key2_path+'.pub').read(),
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
   def test_fingerprint(self):
     fingerprint = ssh_fingerprint(self.key1_path+'.pub')
     key = UserKey(
