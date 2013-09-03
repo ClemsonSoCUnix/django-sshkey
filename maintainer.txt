@@ -6,6 +6,6 @@ bump __version__ in sshkey/__init__.py
 git add sshkey/__init__.py
 git commit -m 'bump version'
 python setup.py sdist
-git flow release finish X.Y.Z
+git flow release finish -m 'version X.Y.Z' X.Y.Z
 git push origin master X.Y.Z
 upload dist/django-sshkey-X.Y.Z.tar.gz to bitbucket
