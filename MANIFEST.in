@@ -5,4 +5,6 @@ include README.md
 include lookup.py
 include lookup.sh
 include openssh-6.2p2-authorized-keys-command-stdin.diff
+recursive-include sshkey/management *.py
+recursive-include sshkey/migrations *.py
 recursive-include sshkey/templates.example *
