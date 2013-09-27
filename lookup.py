@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
-import sshkey.util
+import django_sshkey.util
 import sys
 
-sshkey.util.lookup_command(sys.argv[1:])
+django_sshkey.util.lookup_command(sys.argv[1:])

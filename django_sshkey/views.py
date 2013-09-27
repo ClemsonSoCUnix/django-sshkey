@@ -24,9 +24,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
-from sshkey import settings
-from sshkey.models import UserKey
-from sshkey.forms import UserKeyForm
+from django_sshkey import settings
+from django_sshkey.models import UserKey
+from django_sshkey.forms import UserKeyForm
 
 @require_GET
 def lookup(request):
@@ -73,7 +73,7 @@ def userkey_add(request):
     form = UserKeyForm(request.POST, instance=userkey)
     if form.is_valid():
       form.save()
-      default_redirect = reverse('sshkey.views.userkey_list')
+      default_redirect = reverse('django_sshkey.views.userkey_list')
       url = request.GET.get('next', default_redirect)
       if not is_safe_url(url=url, host=request.get_host()):
         url = default_redirect
@@ -98,7 +98,7 @@ def userkey_edit(request, pk):
     form = UserKeyForm(request.POST, instance=userkey)
     if form.is_valid():
       form.save()
-      default_redirect = reverse('sshkey.views.userkey_list')
+      default_redirect = reverse('django_sshkey.views.userkey_list')
       url = request.GET.get('next', default_redirect)
       if not is_safe_url(url=url, host=request.get_host()):
         url = default_redirect
@@ -122,4 +122,4 @@ def userkey_delete(request, pk):
   userkey.delete()
   message = 'SSH key %s was deleted.' % userkey.name
   messages.success(request, message, fail_silently=True)
-  return HttpResponseRedirect(reverse('sshkey.views.userkey_list'))
+  return HttpResponseRedirect(reverse('django_sshkey.views.userkey_list'))

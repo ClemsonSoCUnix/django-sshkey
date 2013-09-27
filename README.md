@@ -11,9 +11,9 @@ passed as the first argument to the specified command.
 
 # The Django app
 
-The Django app is located in the sshkey directory at the top level of this
-repository.  You should point Django to it in your project's settings.py or
-copy it into your project's directory.
+The Django app is located in the django\_sshkey directory at the top level of
+this repository.  You should point Django to it in your project's settings.py
+or copy it into your project's directory.
 
 In order to associate an incoming public key with a user you must define
 SSHKEY\_AUTHORIZED\_KEYS\_OPTIONS in your project's settings.py.  This should
@@ -22,29 +22,29 @@ replaced with the username of the user associated with the incoming public key.
 
 For instance:
 
-> SSHKEY\_AUTHORIZED\_KEYS\_OPTIONS = 'command="my-command {username}",no-pty'
+    SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="my-command {username}",no-pty'
 
 in settings.py will cause keys produced by the below commands to look similar
 to:
 
-> command="my-command fred",no-pty ssh-rsa BLAHBLAHBLAH
+    command="my-command fred",no-pty ssh-rsa BLAHBLAHBLAH
 
 assuming the key "BLAHBLAHBLAH" is owned by fred.
 
 ## URL Configuration
 
-This text assumes that your Django project's urls.py maps sshkey.urls into the
+This text assumes that your Django project's urls.py maps django\_sshkey.urls into the
 url namespace as follows:
 
-> urlpatterns = patterns('',
->   ...
->   url('^sshkey/', include(sshkey.urls)),
->   ...
-> )
+    urlpatterns = patterns('',
+      ...
+      url('^sshkey/', include(django_sshkey.urls)),
+      ...
+    )
 
 You will need to adjust your URLs if you use a different mapping.
 
-# Tying OpenSSH's AuthorizedKeysCommand to the sshkey Django app
+# Tying OpenSSH's AuthorizedKeysCommand to the django-sshkey
 
 There are three provided ways of connecting AuthorizedKeysCommand to Django.
 In all cases it is recommended and/or required that the command specified with
@@ -76,7 +76,7 @@ This is generally the fastest method.
 Same as above, but it's all written in Python and doesn't rely on external
 commands.
 
-The parent directory of the sshkey app must be in PYTHONPATH.
+The parent directory of the django\_sshkey app must be in PYTHONPATH.
 
 This is generally the second fastest method.
 

@@ -38,6 +38,7 @@ class UserKey(models.Model):
   last_modified = models.DateTimeField(auto_now=True, null=True)
 
   class Meta:
+    db_table = 'sshkey_userkey'
     unique_together = [
       ('user', 'name'),
     ]

@@ -8,20 +8,29 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
         
-        # Adding field 'UserKey.created'
-        db.add_column('sshkey_userkey', 'created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, null=True, blank=True), keep_default=False)
+        # Adding model 'UserKey'
+        db.create_table('sshkey_userkey', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
+            ('name', self.gf('django.db.models.fields.CharField')(max_length=50, blank=True)),
+            ('key', self.gf('django.db.models.fields.TextField')(max_length=2000)),
+            ('fingerprint', self.gf('django.db.models.fields.CharField')(db_index=True, max_length=47, blank=True)),
+            ('created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, null=True, blank=True)),
+            ('last_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, null=True, blank=True)),
+        ))
+        db.send_create_signal('django_sshkey', ['UserKey'])
 
-        # Adding field 'UserKey.last_modified'
-        db.add_column('sshkey_userkey', 'last_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, null=True, blank=True), keep_default=False)
+        # Adding unique constraint on 'UserKey', fields ['user', 'name']
+        db.create_unique('sshkey_userkey', ['user_id', 'name'])
 
 
     def backwards(self, orm):
         
-        # Deleting field 'UserKey.created'
-        db.delete_column('sshkey_userkey', 'created')
+        # Removing unique constraint on 'UserKey', fields ['user', 'name']
+        db.delete_unique('sshkey_userkey', ['user_id', 'name'])
 
-        # Deleting field 'UserKey.last_modified'
-        db.delete_column('sshkey_userkey', 'last_modified')
+        # Deleting model 'UserKey'
+        db.delete_table('sshkey_userkey')
 
 
     models = {
@@ -61,8 +70,8 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        'sshkey.userkey': {
-            'Meta': {'unique_together': "[('user', 'name')]", 'object_name': 'UserKey'},
+        'django_sshkey.userkey': {
+            'Meta': {'unique_together': "[('user', 'name')]", 'object_name': 'UserKey', 'db_table': "'sshkey_userkey'"},
             'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'null': 'True', 'blank': 'True'}),
             'fingerprint': ('django.db.models.fields.CharField', [], {'db_index': 'True', 'max_length': '47', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -73,4 +82,4 @@ class Migration(SchemaMigration):
         }
     }
 
-    complete_apps = ['sshkey']
+    complete_apps = ['django_sshkey']
