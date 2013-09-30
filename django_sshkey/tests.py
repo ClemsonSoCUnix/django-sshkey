@@ -20,8 +20,8 @@ from django.test.client import Client
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
-from sshkey.models import UserKey
-from sshkey import settings
+from django_sshkey.models import UserKey
+from django_sshkey import settings
 import os
 import shutil
 import subprocess
@@ -269,7 +269,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_all(self):
     client = Client()
-    url = reverse('sshkey.views.lookup')
+    url = reverse('django_sshkey.views.lookup')
     response = client.get(url)
     self.assertEqual(response.status_code, 200)
     self.assertIn('Content-Type', response)
@@ -284,7 +284,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_by_fingerprint(self):
     client = Client()
-    url = reverse('sshkey.views.lookup')
+    url = reverse('django_sshkey.views.lookup')
     fingerprint = ssh_fingerprint(self.key1_path+'.pub')
     response = client.get(url, {'fingerprint': fingerprint})
     self.assertEqual(response.status_code, 200)
@@ -299,7 +299,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_by_username_single_result(self):
     client = Client()
-    url = reverse('sshkey.views.lookup')
+    url = reverse('django_sshkey.views.lookup')
     username = self.user2.username
     response = client.get(url, {'username': username})
     self.assertEqual(response.status_code, 200)
@@ -314,7 +314,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_by_username_multiple_results(self):
     client = Client()
-    url = reverse('sshkey.views.lookup')
+    url = reverse('django_sshkey.views.lookup')
     username = self.user1.username
     response = client.get(url, {'username': username})
     self.assertEqual(response.status_code, 200)
@@ -330,7 +330,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_nonexist_fingerprint(self):
     client = Client()
-    url = reverse('sshkey.views.lookup')
+    url = reverse('django_sshkey.views.lookup')
     fingerprint = ssh_fingerprint(self.key4_path+'.pub')
     response = client.get(url, {'fingerprint': fingerprint})
     self.assertEqual(response.status_code, 200)
@@ -340,7 +340,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_nonexist_username(self):
     client = Client()
-    url = reverse('sshkey.views.lookup')
+    url = reverse('django_sshkey.views.lookup')
     response = client.get(url, {'username': 'batman'})
     self.assertEqual(response.status_code, 200)
     self.assertIn('Content-Type', response)

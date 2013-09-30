@@ -16,7 +16,7 @@
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
 from django.contrib import admin
-from sshkey.models import UserKey
+from django_sshkey.models import UserKey
 
 class UserKeyAdmin(admin.ModelAdmin):
   list_display = [

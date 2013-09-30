@@ -15,4 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = '1.1.1'
+from django import forms
+from django_sshkey.models import UserKey
+
+class UserKeyForm(forms.ModelForm):
+  class Meta:
+    model = UserKey
+    fields = ['name', 'key']
