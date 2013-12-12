@@ -38,3 +38,7 @@ def lookup_command(args):
     status = 0
     sys.stdout.write(line)
   sys.exit(status)
+
+def lookup_main():
+  import sys
+  lookup_command(sys.argv[1:])
