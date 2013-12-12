@@ -15,6 +15,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
+def sshkey_fingerprint(b64key):
+  import base64
+  import hashlib
+  key = base64.b64decode(b64key)
+  fp_plain = hashlib.md5(key).hexdigest()
+  return ':'.join(a+b for a,b in zip(fp_plain[::2], fp_plain[1::2]))
+
 def lookup_command(args):
   import sys
   import urllib

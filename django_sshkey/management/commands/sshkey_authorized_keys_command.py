@@ -17,9 +17,8 @@
 
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
-from django_sshkey.models import sshkey_fingerprint, UserKey
-import base64
-import hashlib
+from django_sshkey.models import UserKey
+from django_sshkey.util import sshkey_fingerprint
 import sys
 
 class Command(BaseCommand):
