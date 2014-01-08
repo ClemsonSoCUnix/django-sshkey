@@ -4,6 +4,7 @@ include COPYING.LESSER
 include README.md
 include lookup.py
 include lookup.sh
+include django-sshkey-lookup
 include openssh-6.2p2-authorized-keys-command-stdin.diff
 recursive-include django_sshkey/management *.py
 recursive-include django_sshkey/migrations *.py

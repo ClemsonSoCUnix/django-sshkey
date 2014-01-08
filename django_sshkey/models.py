@@ -18,16 +18,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-import base64
-import hashlib
+from django_sshkey.util import sshkey_fingerprint
 import re
 
 sshkey_re = re.compile(r'(?P<type>[\w-]+)\s+(?P<b64key>\S+)(?:\s+(?P<comment>\S+))?$')
-
-def sshkey_fingerprint(b64key):
-  key = base64.b64decode(b64key)
-  fp_plain = hashlib.md5(key).hexdigest()
-  return ':'.join(a+b for a,b in zip(fp_plain[::2], fp_plain[1::2]))
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)

@@ -8,7 +8,7 @@ will only be present on minor version changes.
 To use South migrations, you must have the south app in your project's
 INSTALLED_APPS.
 
-The following table maps django-anyvcs version to migration labels:
+The following table maps django-sshkey version to migration labels:
 
     Version   App Name        Label   Notes
     1.0.x     sshkey          0001    Migrations were not present in 1.0.x
