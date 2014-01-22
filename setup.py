@@ -31,4 +31,12 @@ setup(
     'Topic :: Internet :: WWW/HTTP',
     'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
   ],
+  scripts=[
+    'django-sshkey-lookup',
+  ],
+  entry_points={
+    'console_scripts': [
+      'django-sshkey-pylookup = django_sshkey.util:lookup_main',
+    ],
+  },
 )
