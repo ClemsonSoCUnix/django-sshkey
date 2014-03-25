@@ -1,9 +1,9 @@
 # django-sshkey
 
-django-sshkey allows you to associate SSH public keys to Django user accounts.
-It provides views to list, add, edit, and delete keys, each of which is
-intended for end-user consumption.  It also provides a lookup view and
-corresponding lookup commands that are suitable for use with the
+django-sshkey allows you to associate multiple SSH public keys with Django
+user accounts.  It provides views to list, add, edit, and delete keys, each of
+which is intended for end-user consumption.  It also provides a lookup view
+and corresponding lookup commands that are suitable for use with the
 `AuthorizedKeysCommand` feature in [OpenSSH][1] 6.2 and above.
 
 ## The Django app
