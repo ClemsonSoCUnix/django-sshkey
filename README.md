@@ -1,23 +1,20 @@
-django-sshkey lets you use a patched OpenSSH server to authenticate incoming
-SSH connections via public key authentication and identify the Django User that
-owns that key.
+# django-sshkey
 
-# The OpenSSH Patch
+django-sshkey allows you to associate SSH public keys to Django user accounts.
+It provides views to list, add, edit, and delete keys, each of which is
+intended for end-user consumption.  It also provides a lookup view and
+corresponding lookup commands that are suitable for use with the
+`AuthorizedKeysCommand` feature in [OpenSSH][1] 6.2 and above.
 
-At the top level of this repository is a patch for OpenSSH 6.2p2 which modifies
-the AuthorizedKeysCommand config option so that the incoming SSH public key is
-passed to the command via standard input.  The incoming username will still be
-passed as the first argument to the specified command.
+## The Django app
 
-# The Django app
-
-The Django app is located in the django\_sshkey directory at the top level of
-this repository.  You should point Django to it in your project's settings.py
-or copy it into your project's directory.
+To use django-sshkey in your Django project, simply add `django_sshkey` to
+`INSTALLED_APPS` in `settings.py`, map the URLs into your project, and provide
+templates for the views (example templates are provided in the source).
 
 In order to associate an incoming public key with a user you must define
-SSHKEY\_AUTHORIZED\_KEYS\_OPTIONS in your project's settings.py.  This should
-be a string containing options accepted by sshd, with "{username}" being
+`SSHKEY_AUTHORIZED_KEYS_OPTIONS` in your project's `settings.py`.  This should
+be a string containing options accepted by sshd, with `{username}` being
 replaced with the username of the user associated with the incoming public key.
 
 For instance:
@@ -27,74 +24,121 @@ For instance:
 in settings.py will cause keys produced by the below commands to look similar
 to:
 
-    command="my-command fred",no-pty ssh-rsa BLAHBLAHBLAH
+    command="my-command fred",no-pty ssh-rsa AAAAB3NzaC1yc2E...
 
-assuming the key "BLAHBLAHBLAH" is owned by fred.
+assuming the key `AAAAB3NzaC1yc2E...` is owned by fred.
 
-## URL Configuration
+### URL Configuration
 
-This text assumes that your Django project's urls.py maps django\_sshkey.urls into the
-url namespace as follows:
+This text assumes that your project's `urls.py` maps `django_sshkey.urls` into
+the URL namespace as follows:
 
+    import django_sshkey.urls
     urlpatterns = patterns('',
       ...
       url('^sshkey/', include(django_sshkey.urls)),
       ...
     )
 
-You will need to adjust your URLs if you use a different mapping.
+You will need to adjust your URLs in the examples below if you use a different
+mapping.
 
-# Tying OpenSSH's AuthorizedKeysCommand to the django-sshkey
+**WARNING**: The `/sshkey/lookup` URL can expose all public keys that have
+been uploaded to your site.  Although they are public keys, it is probably a
+good idea to limit what systems can access this URL via your web server's
+configuration (most of the lookup methods below require access to this URL).
 
-There are three provided ways of connecting AuthorizedKeysCommand to Django.
-In all cases it is recommended and/or required that the command specified with
-AuthorizedKeysCommand be a shell script that is owned by and only writable by
-root which invokes one of the commands below:
+## Tying OpenSSH to django-sshkey
 
-## Using django-sshkey-lookup 
+There are multiple methods of connecting OpenSSH to django-sshkey.  All of the
+methods listed here require the use of the `AuthorizedKeysCommand` directive
+in `sshd_config` present in OpenSSH 6.2 and above.  Please note that the
+command that is referenced by this directive and its ancestor directories must
+be owned by root and writable only by owner.
 
-*Usage: django-sshkey-lookup URL [USERNAME]*
+Unless otherwise stated, all of the methods below use the `SSHKEY_LOOKUP_URL`
+environment variable to determine the URL of the `/sshkey/lookup` URL.  If
+this environment variable is not defined then it will default to
+`http://localhost:8000/sshkey/lookup`.  If this environment variable is
+defined in the sshd process then it will be inherited by the
+`AuthorizedKeysCommand`.
 
-URL should be the full URL to /sshkey/lookup on your Django web server running
-the sshkey app.
+Additionally, all of the methods below use either `curl` (preferred) or `wget`.
+Some commands also use `ssh-keygen`.  These commands must be present in `PATH`.
 
-If USERNAME is specified, lookup keys owned by that user and print them to
-standard output. Any standard input is ignored.
+If you would prefer not to use these external commands then there are variants
+of these commands implemented purely in Python.  However, they are *much*
+slower.  To use the variants, replace `lookup` with `pylookup`.  For example,
+use `django-sshkey-pylookup-all` instead of `django-sshkey-lookup-all`.
 
-If USERNAME is not specified, the incoming public key should be provided on
-standard input; if the key is found it is printed to standard output.
+### Using `django-sshkey-lookup-all`
 
-This command assumes that some fairly standard commands, like ssh-keygen and
-curl, are found in $PATH.
+`Usage: django-sshkey-lookup-all`
 
-This command is equivalent to the old script `lookup.sh` but was renamed to
+This program prints all SSH public keys that are defined on your site.  sshd
+will have to scan through all of them to find the first match, so with many
+keys this method will be slow.  However, it does not require a patched OpenSSH
+server.
+
+This program:
+
+  * can be used directly with `AuthorizedKeysCommand` (the username parameter
+    is ignored).
+  * does not require a patched OpenSSH server.
+  * does not scale well to a large number of user keys.
+
+### Using `django-sshkey-lookup-by-username`
+
+`Usage: django-sshkey-lookup-by-username USERNAME`
+
+This program prints all SSH public keys that are associated with the specified
+user.
+
+This program:
+
+  * can be used directly with `AuthorizedKeysCommand`.
+  * does not require a patched OpenSSH server.
+  * is ideal if each Django user corresponds to a system user account.
+
+### Using `django-sshkey-lookup-by-fingerprint`
+
+`Usage: django-sshkey-lookup-by-fingerprint`
+
+This program prints all SSH public keys that match the given fingerprint.  The
+fingerprint is determined by the first of the following conditions that is met:
+
+  1. The `SSH_KEY_FINGERPRINT` environment variable, which should contain the
+     MD5 fingerprint of the key (this is what is generated by `ssh-keygen -l`).
+  2. The `SSH_KEY` environment variable, which should contain the key in
+     standard openssh format (the same format as `~/.ssh/id_rsa.pub`), is sent
+     to `ssh-keygen -l` to determine the fingerprint.
+  3. The key in standard openssh format is read from standard input and is
+     sent to `ssh-keygen -l` to determine the fingerprint.
+
+This program:
+
+  * can be used directly with `AuthorizedKeysCommand` (the username parameter
+    is ignored).
+  * requires a patched OpenSSH server; compatible patches can be found at one
+    of the following locations:
+      * [openssh-akcenv][2] (this is the preferred patch)
+      * [openssh-stdinkey][3]
+  * is ideal if you want all Django users to access SSH via a shared system
+    user account and be identified by their SSH public key.
+
+### Using `django-sshkey-lookup`
+
+`Usage: django-sshkey-lookup URL [USERNAME]`
+
+This program is a wrapper around the previous two commands.  The first
+parameter is placed in the `SSHKEY_LOOKUP_URL` environment variable.  If the
+second parameter is present then `django-sshkey-lookup-by-username` is
+executed; otherwise `django-sshkey-lookup-by-fingerprint` is executed.
+
+This command is compatible with the old script `lookup.sh` but was renamed to
 have a less ambiguous name when installed system-wide. A symlink is left in
 its place for backwards compatibility.
 
-This is generally the fastest method.
-
-## Using django-sshkey-pylookup
-
-*Usage: django-sshkey-pylookup URL [USERNAME]*
-
-Same as above, but it's all written in Python and doesn't rely on external
-commands.
-
-This script is generated by setuptools when this package is installed. The old
-equivalent, `lookup.py` is available with a deprecation warning for backwards
-compatibility.
-
-The parent directory of the django\_sshkey app must be in PYTHONPATH.
-
-This is generally the second fastest method.
-
-## Using manage.py sshkey\_authorized\_keys\_command
-
-*Usage: PATH\_TO\_DJANGO\_PROJECT/manage.py sshkey\_authorized\_keys\_command [USERNAME]*
-
-Same semantics for USERNAME as above.
-
-This method does not rely on the /sshkey/lookup URL, and instead creates its
-own database connection each time it is invoked.
-
-This is generally the slowest method.
+[1]: http://www.openssh.com/
+[2]: https://github.com/ScottDuckworth/openssh-akcenv
+[3]: https://github.com/ScottDuckworth/openssh-stdinkey
