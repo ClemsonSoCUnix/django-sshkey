@@ -15,6 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
+
+sshkey_re = re.compile(r'(?P<type>[\w-]+)\s+(?P<b64key>\S+)(?:\s+(?P<comment>\S.+))?$')
+
 def sshkey_fingerprint(b64key):
   import base64
   import hashlib

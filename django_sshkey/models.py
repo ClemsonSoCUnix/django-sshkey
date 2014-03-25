@@ -18,10 +18,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django_sshkey.util import sshkey_fingerprint
-import re
-
-sshkey_re = re.compile(r'(?P<type>[\w-]+)\s+(?P<b64key>\S+)(?:\s+(?P<comment>\S+))?$')
+from django_sshkey.util import sshkey_re, sshkey_fingerprint
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
