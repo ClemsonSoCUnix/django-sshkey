@@ -16,14 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 URL [USERNAME]" >&2
-  exit 1
-fi
-SSHKEY_LOOKUP_URL="$1"
-export SSHKEY_LOOKUP_URL
-if [ $# -eq 1 ]; then
-  exec `dirname $0`/django-sshkey-lookup-by-fingerprint
+url="${SSHKEY_LOOKUP_URL:-http://localhost:8000/sshkey/lookup}"
+if type curl >/dev/null 2>&1; then
+  exec curl -s -G "$url" --data-urlencode "username=$1"
 else
-  exec `dirname $0`/django-sshkey-lookup-by-username "$2"
+  exec wget -q -O - "${url}?username=$1"
 fi

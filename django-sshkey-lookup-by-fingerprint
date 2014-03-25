@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2013 Scott Duckworth
 #
 # This file is part of django-sshkey.
@@ -16,14 +16,24 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with django-sshkey.  If not, see <http://www.gnu.org/licenses/>.
 
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 URL [USERNAME]" >&2
-  exit 1
-fi
-SSHKEY_LOOKUP_URL="$1"
-export SSHKEY_LOOKUP_URL
-if [ $# -eq 1 ]; then
-  exec `dirname $0`/django-sshkey-lookup-by-fingerprint
+url="${SSHKEY_LOOKUP_URL:-http://localhost:8000/sshkey/lookup}"
+if [ "x$SSH_KEY_FINGERPRINT" != "x" ]; then
+  fingerprint="$SSH_KEY_FINGERPRINT"
 else
-  exec `dirname $0`/django-sshkey-lookup-by-username "$2"
+  if [ "x$SSH_KEY" == "x" ] && ! read SSH_KEY; then
+    echo "Error: cannot retrieve fingerprint from environment or stdin" >&2
+    exit 1
+  fi
+  info="$(ssh-keygen -lf /dev/stdin <<< "$SSH_KEY")"
+  if [ $? -ne 0 ]; then
+    echo "Error: $info" >&2
+    exit 1
+  fi
+  info=($info)
+  fingerprint="${info[1]}"
+fi
+if type curl >/dev/null 2>&1; then
+  exec curl -s -G "$url" --data-urlencode "fingerprint=${fingerprint}"
+else
+  exec wget -q -O - "${url}?fingerprint=${fingerprint}"
 fi
