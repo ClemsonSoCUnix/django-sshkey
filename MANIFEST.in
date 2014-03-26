@@ -1,11 +1,11 @@
 include LICENSE
-include COPYING
-include COPYING.LESSER
-include README.md
+include README.rst
+include README.upgrading.rst
 include lookup.py
 include lookup.sh
 include django-sshkey-lookup
-include openssh-6.2p2-authorized-keys-command-stdin.diff
-recursive-include django_sshkey/management *.py
+include django-sshkey-lookup-all
+include django-sshkey-lookup-by-username
+include django-sshkey-lookup-by-fingerprint
 recursive-include django_sshkey/migrations *.py
 recursive-include django_sshkey/templates.example *

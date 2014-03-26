@@ -29,12 +29,12 @@
 import os
 from setuptools import setup
 
-README = open(os.path.join(os.path.dirname(__file__), 'README.md')).read()
+README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
-execfile('django_sshkey/__init__.py')
+exec(open('django_sshkey/__init__.py').read())
 
 setup(
   name='django-sshkey',
@@ -60,17 +60,17 @@ setup(
     'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
   ],
   scripts=[
+    'django-sshkey-lookup',
     'django-sshkey-lookup-all',
     'django-sshkey-lookup-by-username',
     'django-sshkey-lookup-by-fingerprint',
-    'django-sshkey-lookup',
   ],
   entry_points={
     'console_scripts': [
+      'django-sshkey-pylookup = django_sshkey.util:lookup_main',
       'django-sshkey-pylookup-all = django_sshkey.util:lookup_all_main',
       'django-sshkey-pylookup-by-username = django_sshkey.util:lookup_by_username_main',
       'django-sshkey-pylookup-by-fingerprint = django_sshkey.util:lookup_by_fingerprint_main',
-      'django-sshkey-pylookup = django_sshkey.util:lookup_main',
     ],
   },
 )
