@@ -1,3 +1,4 @@
+#!/bin/sh
 # Copyright (c) 2014, Clemson University
 # All rights reserved.
 #
@@ -26,25 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.contrib import admin
-from django_sshkey.models import UserKey
-
-class UserKeyAdmin(admin.ModelAdmin):
-  list_display = [
-    '__unicode__',
-    'user',
-    'name',
-    'fingerprint',
-    'created',
-    'last_modified',
-  ]
-  search_fields = [
-    'user__username',
-  ]
-  readonly_fields = [
-    'fingerprint',
-    'created',
-    'last_modified',
-  ]
-
-admin.site.register(UserKey, UserKeyAdmin)
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 URL [USERNAME]" >&2
+  exit 1
+fi
+SSHKEY_LOOKUP_URL="$1"
+export SSHKEY_LOOKUP_URL
+if [ $# -eq 1 ]; then
+  exec `dirname $0`/django-sshkey-lookup-by-fingerprint
+else
+  exec `dirname $0`/django-sshkey-lookup-by-username "$2"
+fi
