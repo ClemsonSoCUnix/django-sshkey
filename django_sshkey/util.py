@@ -26,7 +26,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from collections import namedtuple
+
 SSHKEY_LOOKUP_URL_DEFAULT = 'http://localhost:8000/sshkey/lookup'
+
+KeyInfo = namedtuple('KeyInfo', 'type b64key comment fingerprint')
 
 class SSHKeyFormatError(Exception):
   def __init__(self, text):
@@ -91,7 +95,7 @@ def key_parse(text):
 
   fp = hashlib.md5(key).hexdigest()
   fp = ':'.join(a+b for a,b in zip(fp[::2], fp[1::2]))
-  return (type, b64key, comment, fp)
+  return KeyInfo(type, b64key, comment, fp)
 
 def lookup_all(url):
   import urllib
