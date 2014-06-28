@@ -50,6 +50,11 @@ def ssh_keygen(type=None, passphrase='', comment=None, file=None):
     cmd += ['-f', file]
   subprocess.check_call(cmd)
 
+def ssh_key_export(input_file, output_file, format='RFC4716'):
+  cmd = ['ssh-keygen', '-e', '-m', format, '-f', input_file]
+  with open(output_file, 'wb') as f:
+    subprocess.check_call(cmd, stdout=f)
+
 def ssh_fingerprint(pubkey_path):
   cmd = ['ssh-keygen', '-lf', pubkey_path]
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -229,6 +234,52 @@ class UserKeyCreationTestCase(BaseTestCase):
       key = open(self.key1_path+'.pub').read(),
     )
     self.assertRaises(ValidationError, key2.full_clean)
+
+class RFC4716TestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(RFC4716TestCase, cls).setUpClass()
+    cls.user1 = User.objects.create(username='user1')
+    # key1 has a comment
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    cls.key1_rfc4716_path = os.path.join(cls.key_dir, 'key1.rfc4716')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+    ssh_key_export(cls.key1_path, cls.key1_rfc4716_path, 'RFC4716')
+    # key2 does not have a comment
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    cls.key2_rfc4716_path = os.path.join(cls.key_dir, 'key2.rfc4716')
+    ssh_keygen(comment='', file=cls.key2_path)
+    ssh_key_export(cls.key2_path, cls.key2_rfc4716_path, 'RFC4716')
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(RFC4716TestCase, cls).tearDownClass()
+
+  def tearDown(self):
+    UserKey.objects.all().delete()
+
+  def test_with_comment(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_rfc4716_path).read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.name, 'name')
+    self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+
+  def test_without_comment(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key2_rfc4716_path).read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.name, 'name')
+    self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
 
 class UserKeyLookupTestCase(BaseTestCase):
   @classmethod

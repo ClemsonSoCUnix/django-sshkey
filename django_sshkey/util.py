@@ -26,18 +26,72 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import re
-
 SSHKEY_LOOKUP_URL_DEFAULT = 'http://localhost:8000/sshkey/lookup'
 
-sshkey_re = re.compile(r'(?P<type>[\w-]+)\s+(?P<b64key>\S+)(?:\s+(?P<comment>\S.+))?$')
+class SSHKeyFormatError(Exception):
+  def __init__(self, text):
+    self.text = text
 
-def sshkey_fingerprint(b64key):
+  def __str__(self):
+    return "Unrecognized public key format"
+
+def key_parse(text):
   import base64
   import hashlib
-  key = base64.b64decode(b64key)
-  fp_plain = hashlib.md5(key).hexdigest()
-  return ':'.join(a+b for a,b in zip(fp_plain[::2], fp_plain[1::2]))
+  import struct
+  lines = text.splitlines()
+
+  # OpenSSH public key
+  if len(lines) == 1 and text.startswith(b'ssh-'):
+    fields = text.split(None, 2)
+    if len(fields) < 2:
+      raise SSHKeyFormatError(text)
+    type = fields[0]
+    b64key = fields[1]
+    comment = None
+    if len(fields) == 3:
+      comment = fields[2]
+    try:
+      key = base64.b64decode(b64key)
+    except TypeError:
+      raise SSHKeyFormatError(text)
+
+  # SSH2 public key
+  elif (
+    lines[0] == b'---- BEGIN SSH2 PUBLIC KEY ----'
+    and lines[-1] == b'---- END SSH2 PUBLIC KEY ----'
+  ):
+    b64key = b''
+    headers = {}
+    lines = lines[1:-1]
+    while lines:
+      line = lines.pop(0)
+      if b':' in line:
+        while line[-1] == b'\\':
+          line = line[:-1] + lines.pop(0)
+        k,v = line.split(b':', 1)
+        headers[k.lower().decode('ascii')] = v.lstrip().decode('utf-8')
+      else:
+        b64key += line
+    comment = headers.get('comment')
+    if comment and comment[0] in ('"', "'") and comment[0] == comment[-1]:
+      comment = comment[1:-1]
+    try:
+      key = base64.b64decode(b64key)
+    except TypeError:
+      raise SSHKeyFormatError(text)
+    if len(key) < 4:
+      raise SSHKeyFormatError(text)
+    n = struct.unpack('>I', key[:4])
+    type = key[4:4+n[0]]
+
+  # unrecognized format
+  else:
+    raise SSHKeyFormatError(text)
+
+  fp = hashlib.md5(key).hexdigest()
+  fp = ':'.join(a+b for a,b in zip(fp[::2], fp[1::2]))
+  return (type, b64key, comment, fp)
 
 def lookup_all(url):
   import urllib
@@ -87,13 +141,11 @@ def lookup_by_fingerprint_main():
           "Error: cannot retrieve fingerprint from environment or stdin\n"
         )
         sys.exit(1)
-      m = sshkey_re.match(key)
-      if not m:
-        sys.stderr.write(
-          "Error: cannot parse SSH protocol 2 base64-encoded key"
-        )
+      try:
+        type, b64key, comment, fingerprint = key_parse(key)
+      except SSHKeyFormatError as e:
+        sys.stderr.write("Error: " + str(e))
         sys.exit(1)
-      fingerprint = sshkey_fingerprint(m.group('b64key'))
   url = getenv('SSHKEY_LOOKUP_URL', SSHKEY_LOOKUP_URL_DEFAULT)
   for key in lookup_by_fingerprint(url, fingerprint):
     sys.stdout.write(key)

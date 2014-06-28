@@ -29,7 +29,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django_sshkey.util import sshkey_re, sshkey_fingerprint
+from django_sshkey.util import SSHKeyFormatError, key_parse
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -53,16 +53,15 @@ class UserKey(models.Model):
       self.key = self.key.strip()
 
   def clean(self):
-    m = sshkey_re.match(self.key)
-    errmsg = 'Key is not a valid SSH protocol 2 base64-encoded key'
-    if not m:
-      raise ValidationError(errmsg)
     try:
-      self.fingerprint = sshkey_fingerprint(m.group('b64key'))
-    except TypeError:
-      raise ValidationError(errmsg)
+      type, b64key, comment, self.fingerprint = key_parse(self.key)
+      if comment:
+        self.key = "%s %s %s" % (type.decode(), b64key.decode(), comment)
+      else:
+        self.key = "%s %s" % (type.decode(), b64key.decode())
+    except SSHKeyFormatError as e:
+      raise ValidationError(str(e))
     if not self.name:
-      comment = m.group('comment')
       if not comment:
         raise ValidationError('Name or key comment required')
       self.name = comment
