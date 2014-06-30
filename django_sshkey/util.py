@@ -146,7 +146,8 @@ def lookup_by_fingerprint_main():
         )
         sys.exit(1)
       try:
-        type, b64key, comment, fingerprint = key_parse(key)
+        info = key_parse(key)
+        fingerprint = info.fingerprint
       except SSHKeyFormatError as e:
         sys.stderr.write("Error: " + str(e))
         sys.exit(1)

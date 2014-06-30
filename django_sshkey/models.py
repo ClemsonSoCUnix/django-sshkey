@@ -75,17 +75,18 @@ class UserKey(models.Model):
 
   def clean(self):
     try:
-      type, b64key, comment, self.fingerprint = key_parse(self.key)
-      if comment:
-        self.key = "%s %s %s" % (type.decode(), b64key.decode(), comment)
+      info = key_parse(self.key)
+      self.fingerprint = info.fingerprint
+      if info.comment:
+        self.key = "%s %s %s" % (info.type.decode(), info.b64key.decode(), info.comment)
       else:
-        self.key = "%s %s" % (type.decode(), b64key.decode())
+        self.key = "%s %s" % (info.type.decode(), info.b64key.decode())
     except SSHKeyFormatError as e:
       raise ValidationError(str(e))
     if not self.name:
-      if not comment:
+      if not info.comment:
         raise ValidationError('Name or key comment required')
-      self.name = comment
+      self.name = info.comment
 
   def validate_unique(self, exclude=None):
     if self.pk is None:
