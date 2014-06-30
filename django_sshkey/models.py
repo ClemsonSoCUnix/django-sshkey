@@ -31,6 +31,27 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django_sshkey.util import SSHKeyFormatError, key_parse
 
+def wrap(text, width, end=None):
+  n = 0
+  t = ''
+  if end is None:
+    while n < len(text):
+      m = n + width
+      t += text[n:m]
+      if len(text) <= m:
+        return t
+      t += '\n'
+      n = m
+  else:
+    while n < len(text):
+      m = n + width
+      if len(text) <= m:
+        return t + text[n:m]
+      m -= len(end)
+      t += text[n:m] + end + '\n'
+      n = m
+  return t
+
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
   name = models.CharField(max_length=50, blank=True)
@@ -85,3 +106,16 @@ class UserKey(models.Model):
         raise ValidationError({'key': [message]})
       except type(self).DoesNotExist:
         pass
+
+  def export_openssh(self):
+    return self.key.encode('utf-8')
+
+  def export_rfc4716(self):
+    info = key_parse(self.key)
+    out = b'---- BEGIN SSH2 PUBLIC KEY ----\n'
+    if info.comment:
+      comment = 'Comment: "%s"' % info.comment
+      out += wrap(comment, 72, '\\').encode('ascii') + b'\n'
+    out += wrap(info.b64key, 72).encode('ascii') + b'\n'
+    out += b'---- END SSH2 PUBLIC KEY ----'
+    return out
