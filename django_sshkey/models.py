@@ -29,28 +29,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django_sshkey.util import SSHKeyFormatError, key_parse
-
-def wrap(text, width, end=None):
-  n = 0
-  t = ''
-  if end is None:
-    while n < len(text):
-      m = n + width
-      t += text[n:m]
-      if len(text) <= m:
-        return t
-      t += '\n'
-      n = m
-  else:
-    while n < len(text):
-      m = n + width
-      if len(text) <= m:
-        return t + text[n:m]
-      m -= len(end)
-      t += text[n:m] + end + '\n'
-      n = m
-  return t
+from django_sshkey.util import SSHKeyFormatError, pubkey_parse
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -75,18 +54,15 @@ class UserKey(models.Model):
 
   def clean(self):
     try:
-      info = key_parse(self.key)
-      self.fingerprint = info.fingerprint
-      if info.comment:
-        self.key = "%s %s %s" % (info.type.decode(), info.b64key.decode(), info.comment)
-      else:
-        self.key = "%s %s" % (info.type.decode(), info.b64key.decode())
+      pubkey = pubkey_parse(self.key)
     except SSHKeyFormatError as e:
       raise ValidationError(str(e))
+    self.key = pubkey.format_openssh()
+    self.fingerprint = pubkey.fingerprint()
     if not self.name:
-      if not info.comment:
+      if not pubkey.comment:
         raise ValidationError('Name or key comment required')
-      self.name = info.comment
+      self.name = pubkey.comment
 
   def validate_unique(self, exclude=None):
     if self.pk is None:
@@ -109,14 +85,8 @@ class UserKey(models.Model):
         pass
 
   def export_openssh(self):
-    return self.key.encode('utf-8')
+    return self.key
 
   def export_rfc4716(self):
-    info = key_parse(self.key)
-    out = b'---- BEGIN SSH2 PUBLIC KEY ----\n'
-    if info.comment:
-      comment = 'Comment: "%s"' % info.comment
-      out += wrap(comment, 72, '\\').encode('ascii') + b'\n'
-    out += wrap(info.b64key, 72).encode('ascii') + b'\n'
-    out += b'---- END SSH2 PUBLIC KEY ----'
-    return out
+    pubkey = pubkey_parse(self.key)
+    return pubkey.format_rfc4716()

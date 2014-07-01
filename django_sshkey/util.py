@@ -26,11 +26,31 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from collections import namedtuple
+import base64
+import struct
 
 SSHKEY_LOOKUP_URL_DEFAULT = 'http://localhost:8000/sshkey/lookup'
 
-KeyInfo = namedtuple('KeyInfo', 'type b64key comment fingerprint')
+def wrap(text, width, wrap_end=None):
+  n = 0
+  t = ''
+  if wrap_end is None:
+    while n < len(text):
+      m = n + width
+      t += text[n:m]
+      if len(text) <= m:
+        return t
+      t += '\n'
+      n = m
+  else:
+    while n < len(text):
+      m = n + width
+      if len(text) <= m:
+        return t + text[n:m]
+      m -= len(wrap_end)
+      t += text[n:m] + wrap_end + '\n'
+      n = m
+  return t
 
 class SSHKeyFormatError(Exception):
   def __init__(self, text):
@@ -39,63 +59,86 @@ class SSHKeyFormatError(Exception):
   def __str__(self):
     return "Unrecognized public key format"
 
-def key_parse(text):
-  import base64
-  import hashlib
-  import struct
+class PublicKey(object):
+  def __init__(self, b64key, comment=None):
+    self.b64key = b64key
+    self.comment = comment
+    self.keydata = base64.b64decode(b64key.encode('ascii'))
+    n = struct.unpack('>I', self.keydata[:4])
+    self.algorithm = self.keydata[4:4+n[0]]
+
+  def fingerprint(self):
+    import hashlib
+    fp = hashlib.md5(self.keydata).hexdigest()
+    return ':'.join(a+b for a,b in zip(fp[::2], fp[1::2]))
+
+  def format_openssh(self):
+    out = self.algorithm + ' ' + self.b64key
+    if self.comment:
+      out += ' ' + self.comment
+    return out
+
+  def format_rfc4716(self):
+    out = '---- BEGIN SSH2 PUBLIC KEY ----\n'
+    if self.comment:
+      comment = 'Comment: "%s"' % self.comment
+      out += wrap(comment, 72, '\\') + '\n'
+    out += wrap(self.b64key, 72) + '\n'
+    out += '---- END SSH2 PUBLIC KEY ----'
+    return out
+
+def pubkey_parse_openssh(text):
+  fields = text.split(None, 2)
+  if len(fields) < 2:
+    raise SSHKeyFormatError(text)
+  try:
+    if len(fields) == 2:
+      key = PublicKey(fields[1])
+    else:
+      key = PublicKey(fields[1], fields[2])
+  except TypeError:
+    raise SSHKeyFormatError(text)
+  if fields[0] != key.algorithm:
+    raise SSHKeyFormatError(text)
+  return key
+
+def pubkey_parse_rfc4716(text):
   lines = text.splitlines()
-
-  # OpenSSH public key
-  if len(lines) == 1 and text.startswith(b'ssh-'):
-    fields = text.split(None, 2)
-    if len(fields) < 2:
-      raise SSHKeyFormatError(text)
-    type = fields[0]
-    b64key = fields[1]
-    comment = None
-    if len(fields) == 3:
-      comment = fields[2]
-    try:
-      key = base64.b64decode(b64key)
-    except TypeError:
-      raise SSHKeyFormatError(text)
-
-  # SSH2 public key
-  elif (
-    lines[0] == b'---- BEGIN SSH2 PUBLIC KEY ----'
-    and lines[-1] == b'---- END SSH2 PUBLIC KEY ----'
+  if not (
+    lines[0] == '---- BEGIN SSH2 PUBLIC KEY ----'
+    and lines[-1] == '---- END SSH2 PUBLIC KEY ----'
   ):
-    b64key = b''
-    headers = {}
-    lines = lines[1:-1]
-    while lines:
-      line = lines.pop(0)
-      if b':' in line:
-        while line[-1] == b'\\':
-          line = line[:-1] + lines.pop(0)
-        k,v = line.split(b':', 1)
-        headers[k.lower().decode('ascii')] = v.lstrip().decode('utf-8')
-      else:
-        b64key += line
-    comment = headers.get('comment')
-    if comment and comment[0] in ('"', "'") and comment[0] == comment[-1]:
-      comment = comment[1:-1]
-    try:
-      key = base64.b64decode(b64key)
-    except TypeError:
-      raise SSHKeyFormatError(text)
-    if len(key) < 4:
-      raise SSHKeyFormatError(text)
-    n = struct.unpack('>I', key[:4])
-    type = key[4:4+n[0]]
-
-  # unrecognized format
-  else:
+    raise SSHKeyFormatError(text)
+  lines = lines[1:-1]
+  b64key = ''
+  headers = {}
+  while lines:
+    line = lines.pop(0)
+    if ':' in line:
+      while line[-1] == '\\':
+        line = line[:-1] + lines.pop(0)
+      k,v = line.split(':', 1)
+      headers[k.lower()] = v.lstrip()
+    else:
+      b64key += line
+  comment = headers.get('comment')
+  if comment and comment[0] in ('"', "'") and comment[0] == comment[-1]:
+    comment = comment[1:-1]
+  try:
+    return PublicKey(b64key, comment)
+  except TypeError:
     raise SSHKeyFormatError(text)
 
-  fp = hashlib.md5(key).hexdigest()
-  fp = ':'.join(a+b for a,b in zip(fp[::2], fp[1::2]))
-  return KeyInfo(type, b64key, comment, fp)
+def pubkey_parse(text):
+  lines = text.splitlines()
+
+  if len(lines) == 1:
+    return pubkey_parse_openssh(text)
+
+  if lines[0] == '---- BEGIN SSH2 PUBLIC KEY ----':
+    return pubkey_parse_rfc4716(text)
+
+  raise SSHKeyFormatError(text)
 
 def lookup_all(url):
   import urllib
@@ -146,11 +189,11 @@ def lookup_by_fingerprint_main():
         )
         sys.exit(1)
       try:
-        info = key_parse(key)
-        fingerprint = info.fingerprint
+        pubkey = pubkey_parse(key)
       except SSHKeyFormatError as e:
         sys.stderr.write("Error: " + str(e))
         sys.exit(1)
+      fingerprint = pubkey.fingerprint()
   url = getenv('SSHKEY_LOOKUP_URL', SSHKEY_LOOKUP_URL_DEFAULT)
   for key in lookup_by_fingerprint(url, fingerprint):
     sys.stdout.write(key)
