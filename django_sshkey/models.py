@@ -29,7 +29,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django_sshkey.util import SSHKeyFormatError, pubkey_parse
+from django_sshkey.util import PublicKeyParseError, pubkey_parse
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -55,7 +55,7 @@ class UserKey(models.Model):
   def clean(self):
     try:
       pubkey = pubkey_parse(self.key)
-    except SSHKeyFormatError as e:
+    except PublicKeyParseError as e:
       raise ValidationError(str(e))
     self.key = pubkey.format_openssh()
     self.fingerprint = pubkey.fingerprint()

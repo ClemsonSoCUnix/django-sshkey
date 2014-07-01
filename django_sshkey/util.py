@@ -52,7 +52,7 @@ def wrap(text, width, wrap_end=None):
       n = m
   return t
 
-class SSHKeyFormatError(Exception):
+class PublicKeyParseError(Exception):
   def __init__(self, text):
     self.text = text
 
@@ -90,16 +90,16 @@ class PublicKey(object):
 def pubkey_parse_openssh(text):
   fields = text.split(None, 2)
   if len(fields) < 2:
-    raise SSHKeyFormatError(text)
+    raise PublicKeyParseError(text)
   try:
     if len(fields) == 2:
       key = PublicKey(fields[1])
     else:
       key = PublicKey(fields[1], fields[2])
   except TypeError:
-    raise SSHKeyFormatError(text)
+    raise PublicKeyParseError(text)
   if fields[0] != key.algorithm:
-    raise SSHKeyFormatError(text)
+    raise PublicKeyParseError(text)
   return key
 
 def pubkey_parse_rfc4716(text):
@@ -108,7 +108,7 @@ def pubkey_parse_rfc4716(text):
     lines[0] == '---- BEGIN SSH2 PUBLIC KEY ----'
     and lines[-1] == '---- END SSH2 PUBLIC KEY ----'
   ):
-    raise SSHKeyFormatError(text)
+    raise PublicKeyParseError(text)
   lines = lines[1:-1]
   b64key = ''
   headers = {}
@@ -127,7 +127,7 @@ def pubkey_parse_rfc4716(text):
   try:
     return PublicKey(b64key, comment)
   except TypeError:
-    raise SSHKeyFormatError(text)
+    raise PublicKeyParseError(text)
 
 def pubkey_parse(text):
   lines = text.splitlines()
@@ -138,7 +138,7 @@ def pubkey_parse(text):
   if lines[0] == '---- BEGIN SSH2 PUBLIC KEY ----':
     return pubkey_parse_rfc4716(text)
 
-  raise SSHKeyFormatError(text)
+  raise PublicKeyParseError(text)
 
 def lookup_all(url):
   import urllib
@@ -190,7 +190,7 @@ def lookup_by_fingerprint_main():
         sys.exit(1)
       try:
         pubkey = pubkey_parse(key)
-      except SSHKeyFormatError as e:
+      except PublicKeyParseError as e:
         sys.stderr.write("Error: " + str(e))
         sys.exit(1)
       fingerprint = pubkey.fingerprint()
