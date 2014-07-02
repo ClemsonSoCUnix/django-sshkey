@@ -1,7 +1,12 @@
 # Django settings for testproject project.
 
+import getpass
+import socket
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
+
+DEFAULT_FROM_EMAIL = '%s@%s' % (getpass.getuser(), socket.gethostname())
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),

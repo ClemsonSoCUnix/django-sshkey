@@ -29,7 +29,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 from django_sshkey.util import PublicKeyParseError, pubkey_parse
+from django_sshkey import settings
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -97,3 +100,21 @@ class UserKey(models.Model):
   def touch(self):
     import datetime
     self.last_used = datetime.datetime.now()
+
+@receiver(pre_save, sender=UserKey)
+def send_email_add_key(sender, instance, **kwargs):
+  if not settings.SSHKEY_EMAIL_ADD_KEY or instance.pk:
+    return
+  meta = getattr(instance, 'META', None)
+  remote_addr = None
+  if meta:
+    remote_addr = meta.get('REMOTE_ADDR')
+  body = settings.SSHKEY_EMAIL_ADD_KEY_BODY.format(
+    user_first_name = instance.user.first_name,
+    user_last_name = instance.user.last_name,
+    user_full_name = instance.user.get_full_name(),
+    key_name = instance.name,
+    key_fingerprint = instance.fingerprint,
+    remote_addr = remote_addr or "<unknown>",
+  )
+  instance.user.email_user(settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT, body)

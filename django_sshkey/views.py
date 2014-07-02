@@ -77,6 +77,7 @@ def userkey_list(request):
 def userkey_add(request):
   if request.method == 'POST':
     userkey = UserKey(user=request.user)
+    userkey.META = request.META
     form = UserKeyForm(request.POST, instance=userkey)
     if form.is_valid():
       form.save()
