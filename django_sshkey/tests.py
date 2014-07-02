@@ -267,7 +267,6 @@ class RFC4716TestCase(BaseTestCase):
     )
     key.full_clean()
     key.save()
-    self.assertEqual(key.name, 'name')
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
   def test_without_comment(self):
@@ -278,8 +277,35 @@ class RFC4716TestCase(BaseTestCase):
     )
     key.full_clean()
     key.save()
-    self.assertEqual(key.name, 'name')
     self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
+
+class PemTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(PemTestCase, cls).setUpClass()
+    cls.user1 = User.objects.create(username='user1')
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    cls.key1_pem_path = os.path.join(cls.key_dir, 'key1.pem')
+    ssh_keygen(comment='', file=cls.key1_path)
+    ssh_key_export(cls.key1_path, cls.key1_pem_path, 'PEM')
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(PemTestCase, cls).tearDownClass()
+
+  def tearDown(self):
+    UserKey.objects.all().delete()
+
+  def test(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_pem_path).read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
 class UserKeyLookupTestCase(BaseTestCase):
   @classmethod

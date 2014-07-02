@@ -52,6 +52,21 @@ def wrap(text, width, wrap_end=None):
       n = m
   return t
 
+def bin2hex(data):
+  return ''.join('%02x' % struct.unpack('B', b) for b in data)
+
+hex2bin = bytearray.fromhex
+
+def bytes2int(b):
+  h = ''.join('%02x' % struct.unpack('B', x) for x in b)
+  return int(h, 16)
+
+def int2bytes(i):
+  h = '%x' % i
+  if len(h) & 1:
+    h = '0' + h
+  return bytearray.fromhex(h)
+
 class PublicKeyParseError(Exception):
   def __init__(self, text):
     self.text = text
@@ -85,6 +100,30 @@ class PublicKey(object):
       out += wrap(comment, 72, '\\') + '\n'
     out += wrap(self.b64key, 72) + '\n'
     out += '---- END SSH2 PUBLIC KEY ----'
+    return out
+
+  def format_pem(self):
+    if self.algorithm != 'ssh-rsa':
+      raise TypeError("key is not a RSA key")
+    from pyasn1.codec.der import encoder as der_encoder
+    from pyasn1.type import univ
+    keydata = self.keydata
+    parts = []
+    while keydata:
+      dlen = struct.unpack('>I', keydata[:4])[0]
+      data, keydata = keydata[4:4+dlen], keydata[4+dlen:]
+      parts.append(data)
+    e = bytes2int(parts[1])
+    n = bytes2int(parts[2])
+    pkcs1_seq = univ.Sequence()
+    pkcs1_seq.setComponentByPosition(0, univ.Integer(n))
+    pkcs1_seq.setComponentByPosition(1, univ.Integer(e))
+    der = der_encoder.encode(pkcs1_seq)
+    out = (
+      '-----BEGIN RSA PUBLIC KEY-----\n' +
+      wrap(base64.b64encode(der), 64) + '\n' +
+      '-----END RSA PUBLIC KEY-----'
+    )
     return out
 
 def pubkey_parse_openssh(text):
@@ -129,6 +168,34 @@ def pubkey_parse_rfc4716(text):
   except TypeError:
     raise PublicKeyParseError(text)
 
+def pubkey_parse_pem(text):
+  from pyasn1.codec.der import decoder as der_decoder
+  lines = text.splitlines()
+  if not (
+    lines[0] == '-----BEGIN RSA PUBLIC KEY-----'
+    and lines[-1] == '-----END RSA PUBLIC KEY-----'
+  ):
+    raise PublicKeyParseError(text)
+  der = base64.b64decode(''.join(lines[1:-1]).encode('ascii'))
+  pkcs1_seq = der_decoder.decode(der)
+  n_val = pkcs1_seq[0][0]
+  e_val = pkcs1_seq[0][1]
+  n = int2bytes(n_val)
+  e = int2bytes(e_val)
+  if n[0] & 0x80: n = b'\x00' + n
+  if e[0] & 0x80: e = b'\x00' + e
+  algorithm = 'ssh-rsa'.encode('ascii')
+  keydata = (
+    struct.pack('>I', len(algorithm)) +
+    algorithm +
+    struct.pack('>I', len(e)) +
+    e +
+    struct.pack('>I', len(n)) +
+    n
+  )
+  b64key = base64.b64encode(keydata).decode('ascii')
+  return PublicKey(b64key)
+
 def pubkey_parse(text):
   lines = text.splitlines()
 
@@ -137,6 +204,9 @@ def pubkey_parse(text):
 
   if lines[0] == '---- BEGIN SSH2 PUBLIC KEY ----':
     return pubkey_parse_rfc4716(text)
+
+  if lines[0] == '-----BEGIN RSA PUBLIC KEY-----':
+    return pubkey_parse_pem(text)
 
   raise PublicKeyParseError(text)
 

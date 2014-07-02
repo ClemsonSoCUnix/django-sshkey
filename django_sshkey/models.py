@@ -84,9 +84,11 @@ class UserKey(models.Model):
       except type(self).DoesNotExist:
         pass
 
-  def export_openssh(self):
-    return self.key
-
-  def export_rfc4716(self):
+  def export(self, format='RFC4716'):
     pubkey = pubkey_parse(self.key)
-    return pubkey.format_rfc4716()
+    f = format.upper()
+    if f == 'RFC4716':
+      return pubkey.format_rfc4716()
+    if f == 'PEM':
+      return pubkey.format_pem()
+    raise ValueError("Invalid format")
