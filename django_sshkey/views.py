@@ -68,7 +68,7 @@ def userkey_list(request):
   userkey_list = UserKey.objects.filter(user=request.user)
   return render_to_response(
     'sshkey/userkey_list.html',
-    { 'userkey_list': userkey_list },
+    { 'userkey_list': userkey_list, 'allow_edit': settings.SSHKEY_ALLOW_EDIT },
     context_instance = RequestContext(request),
   )
 
@@ -99,6 +99,8 @@ def userkey_add(request):
 @login_required
 @require_http_methods(['GET', 'POST'])
 def userkey_edit(request, pk):
+  if not settings.SSHKEY_ALLOW_EDIT:
+    raise PermissionDenied
   userkey = get_object_or_404(UserKey, pk=pk)
   if userkey.user != request.user:
     raise PermissionDenied
