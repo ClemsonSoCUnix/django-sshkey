@@ -50,9 +50,14 @@ def ssh_keygen(type=None, passphrase='', comment=None, file=None):
     cmd += ['-f', file]
   subprocess.check_call(cmd)
 
-def ssh_key_export(input_file, output_file, format='RFC4716'):
-  cmd = ['ssh-keygen', '-e', '-m', format, '-f', input_file]
-  with open(output_file, 'wb') as f:
+def ssh_key_export(input_path, output_path, format='RFC4716'):
+  cmd = ['ssh-keygen', '-e', '-m', format, '-f', input_path]
+  with open(output_path, 'wb') as f:
+    subprocess.check_call(cmd, stdout=f)
+
+def ssh_key_import(input_path, output_path, format='RFC4716'):
+  cmd = ['ssh-keygen', '-i', '-m', format, '-f', input_path]
+  with open(output_path, 'wb') as f:
     subprocess.check_call(cmd, stdout=f)
 
 def ssh_fingerprint(pubkey_path):
@@ -274,7 +279,7 @@ class RFC4716TestCase(BaseTestCase):
   def tearDown(self):
     UserKey.objects.all().delete()
 
-  def test_with_comment(self):
+  def test_import_with_comment(self):
     key = UserKey(
       user = self.user1,
       name = 'name',
@@ -284,7 +289,7 @@ class RFC4716TestCase(BaseTestCase):
     key.save()
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
-  def test_without_comment(self):
+  def test_import_without_comment(self):
     key = UserKey(
       user = self.user1,
       name = 'name',
@@ -293,6 +298,21 @@ class RFC4716TestCase(BaseTestCase):
     key.full_clean()
     key.save()
     self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
+
+  def test_export(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    export_path = os.path.join(self.key_dir, 'export')
+    import_path = os.path.join(self.key_dir, 'import')
+    with open(export_path, 'w') as f:
+      f.write(key.export('RFC4716'))
+    ssh_key_import(export_path, import_path, 'RFC4716')
+    self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
 class PemTestCase(BaseTestCase):
   @classmethod
@@ -312,7 +332,7 @@ class PemTestCase(BaseTestCase):
   def tearDown(self):
     UserKey.objects.all().delete()
 
-  def test(self):
+  def test_import(self):
     key = UserKey(
       user = self.user1,
       name = 'name',
@@ -321,6 +341,21 @@ class PemTestCase(BaseTestCase):
     key.full_clean()
     key.save()
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+
+  def test_export(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    export_path = os.path.join(self.key_dir, 'export')
+    import_path = os.path.join(self.key_dir, 'import')
+    with open(export_path, 'w') as f:
+      f.write(key.export('PEM'))
+    ssh_key_import(export_path, import_path, 'PEM')
+    self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
 class UserKeyLookupTestCase(BaseTestCase):
   @classmethod
