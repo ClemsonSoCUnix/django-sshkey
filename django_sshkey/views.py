@@ -85,7 +85,7 @@ def userkey_add(request):
       url = request.GET.get('next', default_redirect)
       if not is_safe_url(url=url, host=request.get_host()):
         url = default_redirect
-      message = 'SSH key %s was saved.' % userkey.name
+      message = 'SSH public key %s was added.' % userkey.name
       messages.success(request, message, fail_silently=True)
       return HttpResponseRedirect(url)
   else:
@@ -112,7 +112,7 @@ def userkey_edit(request, pk):
       url = request.GET.get('next', default_redirect)
       if not is_safe_url(url=url, host=request.get_host()):
         url = default_redirect
-      message = 'SSH key %s was saved.' % userkey.name
+      message = 'SSH public key %s was saved.' % userkey.name
       messages.success(request, message, fail_silently=True)
       return HttpResponseRedirect(url)
   else:
@@ -130,6 +130,6 @@ def userkey_delete(request, pk):
   if userkey.user != request.user:
     raise PermissionDenied
   userkey.delete()
-  message = 'SSH key %s was deleted.' % userkey.name
+  message = 'SSH public key %s was deleted.' % userkey.name
   messages.success(request, message, fail_silently=True)
   return HttpResponseRedirect(reverse('django_sshkey.views.userkey_list'))
