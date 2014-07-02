@@ -174,6 +174,21 @@ class UserKeyCreationTestCase(BaseTestCase):
     key.save()
     self.assertEqual(key.fingerprint, fingerprint)
 
+  def test_touch(self):
+    import datetime
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertIsNone(key.last_used)
+    key.touch()
+    key.save()
+    self.assertIsInstance(key.last_used, datetime.datetime)
+    key.touch()
+
   def test_same_name_same_user(self):
     key1 = UserKey(
       user = self.user1,

@@ -38,6 +38,7 @@ class UserKey(models.Model):
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
   last_modified = models.DateTimeField(auto_now=True, null=True)
+  last_used = models.DateTimeField(null=True)
 
   class Meta:
     db_table = 'sshkey_userkey'
@@ -92,3 +93,7 @@ class UserKey(models.Model):
     if f == 'PEM':
       return pubkey.format_pem()
     raise ValueError("Invalid format")
+
+  def touch(self):
+    import datetime
+    self.last_used = datetime.datetime.now()
