@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import base64
+import binascii
 import struct
 
 SSHKEY_LOOKUP_URL_DEFAULT = 'http://localhost:8000/sshkey/lookup'
@@ -52,13 +53,8 @@ def wrap(text, width, wrap_end=None):
       n = m
   return t
 
-def bin2hex(data):
-  return ''.join('%02x' % struct.unpack('B', b) for b in data)
-
-hex2bin = bytearray.fromhex
-
 def bytes2int(b):
-  h = ''.join('%02x' % struct.unpack('B', x) for x in b)
+  h = binascii.hexlify(b)
   return int(h, 16)
 
 def int2bytes(i):
