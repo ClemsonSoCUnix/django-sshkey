@@ -362,39 +362,39 @@ class UserKeyLookupTestCase(BaseTestCase):
   def setUpClass(cls):
     super(UserKeyLookupTestCase, cls).setUpClass()
     cls.original_options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS
-    settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="{username}"'
+    settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="{username} {key_id}"'
     cls.user1 = User.objects.create(username='user1')
     cls.user2 = User.objects.create(username='user2')
 
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(file=cls.key1_path)
-    key1 = UserKey(
+    cls.key1 = UserKey(
       user = cls.user1,
       name = 'key1',
       key = open(cls.key1_path+'.pub').read(),
     )
-    key1.full_clean()
-    key1.save()
+    cls.key1.full_clean()
+    cls.key1.save()
 
     cls.key2_path = os.path.join(cls.key_dir, 'key2')
     ssh_keygen(file=cls.key2_path)
-    key2 = UserKey(
+    cls.key2 = UserKey(
       user = cls.user1,
       name = 'key2',
       key = open(cls.key2_path+'.pub').read(),
     )
-    key2.full_clean()
-    key2.save()
+    cls.key2.full_clean()
+    cls.key2.save()
 
     cls.key3_path = os.path.join(cls.key_dir, 'key3')
     ssh_keygen(file=cls.key3_path)
-    key3 = UserKey(
+    cls.key3 = UserKey(
       user = cls.user2,
       name = 'key3',
       key = open(cls.key3_path+'.pub').read(),
     )
-    key3.full_clean()
-    key3.save()
+    cls.key3.full_clean()
+    cls.key3.save()
 
     cls.key4_path = os.path.join(cls.key_dir, 'key4')
     ssh_keygen(file=cls.key4_path)
@@ -414,9 +414,9 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertEqual(response['Content-Type'], 'text/plain')
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
-      'command="user1" ' + open(self.key2_path + '.pub').read().strip(),
-      'command="user2" ' + open(self.key3_path + '.pub').read().strip(),
+      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
+      'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
+      'command="user2 %s" %s' % (self.key3.id, open(self.key3_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 
@@ -431,7 +431,7 @@ class UserKeyLookupTestCase(BaseTestCase):
     username = self.user1.username
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
+      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 
@@ -446,7 +446,7 @@ class UserKeyLookupTestCase(BaseTestCase):
     body = open(self.key1_path + '.pub').read().strip()
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user2" ' + open(self.key3_path + '.pub').read().strip(),
+      'command="user2 %s" %s' % (self.key3.id, open(self.key3_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 
@@ -461,8 +461,8 @@ class UserKeyLookupTestCase(BaseTestCase):
     body = open(self.key1_path + '.pub').read().strip()
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
-      'command="user1" ' + open(self.key2_path + '.pub').read().strip(),
+      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
+      'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 

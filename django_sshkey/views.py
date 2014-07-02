@@ -54,7 +54,9 @@ def lookup(request):
   for key in keys:
     if settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS:
       options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS.format(
-        username=key.user.username) + ' '
+        username=key.user.username,
+        key_id=key.id,
+      ) + ' '
     else:
       options = ''
     response += options + key.key + '\n'
