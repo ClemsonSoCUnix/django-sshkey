@@ -55,12 +55,6 @@ def lookup(request):
     if settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS:
       options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS.format(
         username=key.user.username) + ' '
-    elif settings.SSHKEY_AUTHORIZED_KEYS_COMMAND:
-      options = 'command="%s" ' % (
-        settings.SSHKEY_AUTHORIZED_KEYS_COMMAND
-          .format(username=key.user.username)
-          .replace('"', r'\"')
-      )
     else:
       options = ''
     response += options + key.key + '\n'
