@@ -74,9 +74,14 @@ class PublicKey(object):
   def __init__(self, b64key, comment=None):
     self.b64key = b64key
     self.comment = comment
-    self.keydata = base64.b64decode(b64key.encode('ascii'))
-    n = struct.unpack('>I', self.keydata[:4])
-    self.algorithm = self.keydata[4:4+n[0]]
+    keydata = base64.b64decode(b64key.encode('ascii'))
+    self.keydata = keydata
+    self.parts = []
+    while keydata:
+      dlen = struct.unpack('>I', keydata[:4])[0]
+      data, keydata = keydata[4:4+dlen], keydata[4+dlen:]
+      self.parts.append(data)
+    self.algorithm = self.parts[0]
 
   def fingerprint(self):
     import hashlib
@@ -99,18 +104,12 @@ class PublicKey(object):
     return out
 
   def format_pem(self):
-    if self.algorithm != 'ssh-rsa':
-      raise TypeError("key is not a RSA key")
+    if self.algorithm != 'ssh-rsa' and len(self.parts) == 3:
+      raise TypeError("key is not a valid RSA key")
     from pyasn1.codec.der import encoder as der_encoder
     from pyasn1.type import univ
-    keydata = self.keydata
-    parts = []
-    while keydata:
-      dlen = struct.unpack('>I', keydata[:4])[0]
-      data, keydata = keydata[4:4+dlen], keydata[4+dlen:]
-      parts.append(data)
-    e = bytes2int(parts[1])
-    n = bytes2int(parts[2])
+    e = bytes2int(self.parts[1])
+    n = bytes2int(self.parts[2])
     pkcs1_seq = univ.Sequence()
     pkcs1_seq.setComponentByPosition(0, univ.Integer(n))
     pkcs1_seq.setComponentByPosition(1, univ.Integer(e))
