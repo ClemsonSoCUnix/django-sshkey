@@ -265,15 +265,50 @@ def lookup_by_fingerprint_main():
 
 def lookup_main():
   import sys
+  import getopt
   from os import environ
-  if len(sys.argv) < 2:
-    sys.stderr.write('Usage: %s URL [USERNAME]\n' % sys.argv[0])
+  usage = (
+    "Usage: {prog} -a URL\n"
+    "       {prog} -u URL USERNAME\n"
+    "       {prog} -f URL FINGERPRINT\n"
+    "       {prog} URL [USERNAME]\n"
+  ).format(prog=sys.argv[0])
+  try:
+    opts, args = getopt.getopt(sys.argv[1:], 'hafu')
+  except getopt.GetoptError as e:
+    sys.stderr.write("Error: %s\n" % str(e))
+    sys.stderr.write(usage)
     sys.exit(1)
-  url = sys.argv[1]
-  if len(sys.argv) == 2:
-    environ['SSHKEY_LOOKUP_URL'] = url
-    lookup_by_fingerprint_main()
+  mode = 'x'
+  for o, a in opts:
+    if o == '-h':
+      sys.stdout.write(usage)
+      sys.exit(0)
+    else:
+      mode = o[1]
+  if len(args) == 0:
+    sys.stderr.write(usage)
+    sys.exit(1)
+  url = args[0]
+
+  if mode == 'a':
+    response = lookup_all(url)
+  elif mode == 'f':
+    if len(args) < 2:
+      sys.stderr.write(usage)
+      sys.exit(1)
+    response = lookup_by_fingerprint(url, args[1])
+  elif mode == 'u':
+    if len(args) < 2:
+      sys.stderr.write(usage)
+      sys.exit(1)
+    response = lookup_by_username(url, args[1])
   else:
-    username = sys.argv[2]
-    for key in lookup_by_username(url, username):
-      sys.stdout.write(key)
+    if len(args) == 1:
+      environ['SSHKEY_LOOKUP_URL'] = url
+      return lookup_by_fingerprint_main()
+    else:
+      response = lookup_by_username(url, args[1])
+
+  for key in response:
+    sys.stdout.write(key)
