@@ -117,4 +117,8 @@ def send_email_add_key(sender, instance, **kwargs):
     key_fingerprint = instance.fingerprint,
     remote_addr = remote_addr or "<unknown>",
   )
-  instance.user.email_user(settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT, body)
+  instance.user.email_user(
+    settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
+    body,
+    settings.SSHKEY_FROM_EMAIL,
+  )

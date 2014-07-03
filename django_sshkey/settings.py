@@ -41,4 +41,4 @@ SSHKEY_EMAIL_ADD_KEY_BODY = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY_BODY',
   "{key_fingerprint}\n\n"
   "If you believe this key was added in error, you should delete the key."
 )
-DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
+SSHKEY_FROM_EMAIL = getattr(settings, 'SSHKEY_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)
