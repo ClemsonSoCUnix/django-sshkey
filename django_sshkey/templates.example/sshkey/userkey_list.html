@@ -13,14 +13,16 @@
     <th>Fingerprint</th>
     <th>Created</th>
     <th>Last Modified</th>
+    <th>Last Used</th>
     <th></th>
   </tr>
 {% for userkey in userkey_list %}
   <tr>
     <td>{{ userkey.name }}</td>
     <td>{{ userkey.fingerprint }}</td>
-    <td>{{ userkey.created }}</td>
-    <td>{{ userkey.last_modified }}</td>
+    <td>{{ userkey.created|default:"unknown" }}</td>
+    <td>{{ userkey.last_modified|default:"unknown" }}</td>
+    <td>{{ userkey.last_used|default:"never" }}</td>
     {% if allow_edit %}
     <td><a href="{% url django_sshkey.views.userkey_edit userkey.pk %}">Edit</a></td>
     {% endif %}
