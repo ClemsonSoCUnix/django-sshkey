@@ -105,20 +105,25 @@ class UserKey(models.Model):
 def send_email_add_key(sender, instance, **kwargs):
   if not settings.SSHKEY_EMAIL_ADD_KEY or instance.pk:
     return
-  meta = getattr(instance, 'META', None)
-  remote_addr = None
-  if meta:
-    remote_addr = meta.get('REMOTE_ADDR')
-  body = settings.SSHKEY_EMAIL_ADD_KEY_BODY.format(
-    user_first_name = instance.user.first_name,
-    user_last_name = instance.user.last_name,
-    user_full_name = instance.user.get_full_name(),
-    key_name = instance.name,
-    key_fingerprint = instance.fingerprint,
-    remote_addr = remote_addr or "<unknown>",
-  )
-  instance.user.email_user(
+  from django.template.loader import render_to_string
+  from django.core.mail import EmailMultiAlternatives
+  from django.core.urlresolvers import reverse
+  context_dict = {
+    'key': instance,
+    'subject': settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
+  }
+  request = getattr(instance, 'request', None)
+  if request:
+    context_dict['request'] = request
+    context_dict['userkey_list_uri'] = request.build_absolute_uri(reverse('django_sshkey.views.userkey_list'))
+  text_content = render_to_string('sshkey/add_key.txt', context_dict)
+  msg = EmailMultiAlternatives(
     settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
-    body,
+    text_content,
     settings.SSHKEY_FROM_EMAIL,
+    [instance.user.email],
   )
+  if settings.SSHKEY_SEND_HTML_EMAIL:
+    html_content = render_to_string('sshkey/add_key.html', context_dict)
+    msg.attach_alternative(html_content, 'text/html')
+  msg.send()

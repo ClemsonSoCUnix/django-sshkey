@@ -34,11 +34,5 @@ SSHKEY_EMAIL_ADD_KEY = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY', True)
 SSHKEY_EMAIL_ADD_KEY_SUBJECT = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY_SUBJECT',
   "A new public key was added to your account"
 )
-SSHKEY_EMAIL_ADD_KEY_BODY = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY_BODY',
-  "{user_first_name},\n\n"
-  "The following SSH public key was added to your account from {remote_addr}:\n\n"
-  "{key_name}\n"
-  "{key_fingerprint}\n\n"
-  "If you believe this key was added in error, you should delete the key."
-)
 SSHKEY_FROM_EMAIL = getattr(settings, 'SSHKEY_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)
+SSHKEY_SEND_HTML_EMAIL = getattr(settings, 'SSHKEY_SEND_HTML_EMAIL', False)
