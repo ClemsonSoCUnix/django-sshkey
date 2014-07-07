@@ -26,6 +26,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import datetime
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -40,7 +42,7 @@ class UserKey(models.Model):
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
-  last_modified = models.DateTimeField(auto_now=True, null=True)
+  last_modified = models.DateTimeField(null=True)
   last_used = models.DateTimeField(null=True)
 
   class Meta:
@@ -97,9 +99,14 @@ class UserKey(models.Model):
       return pubkey.format_pem()
     raise ValueError("Invalid format")
 
+  def save(self, *args, **kwargs):
+    if kwargs.pop('update_last_modified', True):
+      self.last_modified = datetime.datetime.now()
+    super(UserKey, self).save(*args, **kwargs)
+
   def touch(self):
-    import datetime
     self.last_used = datetime.datetime.now()
+    self.save(update_last_modified=False)
 
 @receiver(pre_save, sender=UserKey)
 def send_email_add_key(sender, instance, **kwargs):
