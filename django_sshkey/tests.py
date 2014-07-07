@@ -50,6 +50,16 @@ def ssh_keygen(type=None, passphrase='', comment=None, file=None):
     cmd += ['-f', file]
   subprocess.check_call(cmd)
 
+def ssh_key_export(input_path, output_path, format='RFC4716'):
+  cmd = ['ssh-keygen', '-e', '-m', format, '-f', input_path]
+  with open(output_path, 'wb') as f:
+    subprocess.check_call(cmd, stdout=f)
+
+def ssh_key_import(input_path, output_path, format='RFC4716'):
+  cmd = ['ssh-keygen', '-i', '-m', format, '-f', input_path]
+  with open(output_path, 'wb') as f:
+    subprocess.check_call(cmd, stdout=f)
+
 def ssh_fingerprint(pubkey_path):
   cmd = ['ssh-keygen', '-lf', pubkey_path]
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -169,6 +179,21 @@ class UserKeyCreationTestCase(BaseTestCase):
     key.save()
     self.assertEqual(key.fingerprint, fingerprint)
 
+  def test_touch(self):
+    import datetime
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertIsNone(key.last_used)
+    key.touch()
+    key.save()
+    self.assertIsInstance(key.last_used, datetime.datetime)
+    key.touch()
+
   def test_same_name_same_user(self):
     key1 = UserKey(
       user = self.user1,
@@ -230,44 +255,146 @@ class UserKeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
+class RFC4716TestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(RFC4716TestCase, cls).setUpClass()
+    cls.user1 = User.objects.create(username='user1')
+    # key1 has a comment
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    cls.key1_rfc4716_path = os.path.join(cls.key_dir, 'key1.rfc4716')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+    ssh_key_export(cls.key1_path, cls.key1_rfc4716_path, 'RFC4716')
+    # key2 does not have a comment
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    cls.key2_rfc4716_path = os.path.join(cls.key_dir, 'key2.rfc4716')
+    ssh_keygen(comment='', file=cls.key2_path)
+    ssh_key_export(cls.key2_path, cls.key2_rfc4716_path, 'RFC4716')
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(RFC4716TestCase, cls).tearDownClass()
+
+  def tearDown(self):
+    UserKey.objects.all().delete()
+
+  def test_import_with_comment(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_rfc4716_path).read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+
+  def test_import_without_comment(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key2_rfc4716_path).read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
+
+  def test_export(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    export_path = os.path.join(self.key_dir, 'export')
+    import_path = os.path.join(self.key_dir, 'import')
+    with open(export_path, 'w') as f:
+      f.write(key.export('RFC4716'))
+    ssh_key_import(export_path, import_path, 'RFC4716')
+    self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+
+class PemTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(PemTestCase, cls).setUpClass()
+    cls.user1 = User.objects.create(username='user1')
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    cls.key1_pem_path = os.path.join(cls.key_dir, 'key1.pem')
+    ssh_keygen(comment='', file=cls.key1_path)
+    ssh_key_export(cls.key1_path, cls.key1_pem_path, 'PEM')
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(PemTestCase, cls).tearDownClass()
+
+  def tearDown(self):
+    UserKey.objects.all().delete()
+
+  def test_import(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_pem_path).read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+
+  def test_export(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    export_path = os.path.join(self.key_dir, 'export')
+    import_path = os.path.join(self.key_dir, 'import')
+    with open(export_path, 'w') as f:
+      f.write(key.export('PEM'))
+    ssh_key_import(export_path, import_path, 'PEM')
+    self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+
 class UserKeyLookupTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
     super(UserKeyLookupTestCase, cls).setUpClass()
     cls.original_options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS
-    settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="{username}"'
+    settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="{username} {key_id}"'
     cls.user1 = User.objects.create(username='user1')
     cls.user2 = User.objects.create(username='user2')
 
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(file=cls.key1_path)
-    key1 = UserKey(
+    cls.key1 = UserKey(
       user = cls.user1,
       name = 'key1',
       key = open(cls.key1_path+'.pub').read(),
     )
-    key1.full_clean()
-    key1.save()
+    cls.key1.full_clean()
+    cls.key1.save()
 
     cls.key2_path = os.path.join(cls.key_dir, 'key2')
     ssh_keygen(file=cls.key2_path)
-    key2 = UserKey(
+    cls.key2 = UserKey(
       user = cls.user1,
       name = 'key2',
       key = open(cls.key2_path+'.pub').read(),
     )
-    key2.full_clean()
-    key2.save()
+    cls.key2.full_clean()
+    cls.key2.save()
 
     cls.key3_path = os.path.join(cls.key_dir, 'key3')
     ssh_keygen(file=cls.key3_path)
-    key3 = UserKey(
+    cls.key3 = UserKey(
       user = cls.user2,
       name = 'key3',
       key = open(cls.key3_path+'.pub').read(),
     )
-    key3.full_clean()
-    key3.save()
+    cls.key3.full_clean()
+    cls.key3.save()
 
     cls.key4_path = os.path.join(cls.key_dir, 'key4')
     ssh_keygen(file=cls.key4_path)
@@ -287,9 +414,9 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertEqual(response['Content-Type'], 'text/plain')
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
-      'command="user1" ' + open(self.key2_path + '.pub').read().strip(),
-      'command="user2" ' + open(self.key3_path + '.pub').read().strip(),
+      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
+      'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
+      'command="user2 %s" %s' % (self.key3.id, open(self.key3_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 
@@ -304,7 +431,7 @@ class UserKeyLookupTestCase(BaseTestCase):
     username = self.user1.username
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
+      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 
@@ -319,7 +446,7 @@ class UserKeyLookupTestCase(BaseTestCase):
     body = open(self.key1_path + '.pub').read().strip()
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user2" ' + open(self.key3_path + '.pub').read().strip(),
+      'command="user2 %s" %s' % (self.key3.id, open(self.key3_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 
@@ -334,8 +461,8 @@ class UserKeyLookupTestCase(BaseTestCase):
     body = open(self.key1_path + '.pub').read().strip()
     actual_content = set(response.content.strip().split('\n'))
     correct_content = set((
-      'command="user1" ' + open(self.key1_path + '.pub').read().strip(),
-      'command="user1" ' + open(self.key2_path + '.pub').read().strip(),
+      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
+      'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
     ))
     self.assertEqual(actual_content, correct_content)
 

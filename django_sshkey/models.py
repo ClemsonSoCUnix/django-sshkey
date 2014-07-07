@@ -26,10 +26,15 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import datetime
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django_sshkey.util import sshkey_re, sshkey_fingerprint
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django_sshkey.util import PublicKeyParseError, pubkey_parse
+from django_sshkey import settings
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -37,7 +42,8 @@ class UserKey(models.Model):
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
-  last_modified = models.DateTimeField(auto_now=True, null=True)
+  last_modified = models.DateTimeField(null=True)
+  last_used = models.DateTimeField(null=True)
 
   class Meta:
     db_table = 'sshkey_userkey'
@@ -53,19 +59,16 @@ class UserKey(models.Model):
       self.key = self.key.strip()
 
   def clean(self):
-    m = sshkey_re.match(self.key)
-    errmsg = 'Key is not a valid SSH protocol 2 base64-encoded key'
-    if not m:
-      raise ValidationError(errmsg)
     try:
-      self.fingerprint = sshkey_fingerprint(m.group('b64key'))
-    except TypeError:
-      raise ValidationError(errmsg)
+      pubkey = pubkey_parse(self.key)
+    except PublicKeyParseError as e:
+      raise ValidationError(str(e))
+    self.key = pubkey.format_openssh()
+    self.fingerprint = pubkey.fingerprint()
     if not self.name:
-      comment = m.group('comment')
-      if not comment:
+      if not pubkey.comment:
         raise ValidationError('Name or key comment required')
-      self.name = comment
+      self.name = pubkey.comment
 
   def validate_unique(self, exclude=None):
     if self.pk is None:
@@ -86,3 +89,48 @@ class UserKey(models.Model):
         raise ValidationError({'key': [message]})
       except type(self).DoesNotExist:
         pass
+
+  def export(self, format='RFC4716'):
+    pubkey = pubkey_parse(self.key)
+    f = format.upper()
+    if f == 'RFC4716':
+      return pubkey.format_rfc4716()
+    if f == 'PEM':
+      return pubkey.format_pem()
+    raise ValueError("Invalid format")
+
+  def save(self, *args, **kwargs):
+    if kwargs.pop('update_last_modified', True):
+      self.last_modified = datetime.datetime.now()
+    super(UserKey, self).save(*args, **kwargs)
+
+  def touch(self):
+    self.last_used = datetime.datetime.now()
+    self.save(update_last_modified=False)
+
+@receiver(pre_save, sender=UserKey)
+def send_email_add_key(sender, instance, **kwargs):
+  if not settings.SSHKEY_EMAIL_ADD_KEY or instance.pk:
+    return
+  from django.template.loader import render_to_string
+  from django.core.mail import EmailMultiAlternatives
+  from django.core.urlresolvers import reverse
+  context_dict = {
+    'key': instance,
+    'subject': settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
+  }
+  request = getattr(instance, 'request', None)
+  if request:
+    context_dict['request'] = request
+    context_dict['userkey_list_uri'] = request.build_absolute_uri(reverse('django_sshkey.views.userkey_list'))
+  text_content = render_to_string('sshkey/add_key.txt', context_dict)
+  msg = EmailMultiAlternatives(
+    settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
+    text_content,
+    settings.SSHKEY_FROM_EMAIL,
+    [instance.user.email],
+  )
+  if settings.SSHKEY_SEND_HTML_EMAIL:
+    html_content = render_to_string('sshkey/add_key.html', context_dict)
+    msg.attach_alternative(html_content, 'text/html')
+  msg.send()

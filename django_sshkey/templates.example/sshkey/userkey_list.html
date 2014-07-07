@@ -1,21 +1,38 @@
 <h1>My Keys</h1>
+{% if messages %}
+<ul class="messages">
+  {% for message in messages %}
+  <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
 <p><a href="{% url django_sshkey.views.userkey_add %}">Add Key</a></p>
 <table>
   <tr>
     <th>Key</th>
     <th>Fingerprint</th>
     <th>Created</th>
+    {% if allow_edit %}
     <th>Last Modified</th>
+    {% endif %}
+    <th>Last Used</th>
     <th></th>
   </tr>
 {% for userkey in userkey_list %}
   <tr>
     <td>{{ userkey.name }}</td>
     <td>{{ userkey.fingerprint }}</td>
-    <td>{{ userkey.created }}</td>
-    <td>{{ userkey.last_modified }}</td>
-    <td><a href="{% url django_sshkey.views.userkey_edit userkey.pk %}">Edit</a></td>
-    <td><a href="{% url django_sshkey.views.userkey_delete userkey.pk %}">Delete</a></td>
+    <td>{{ userkey.created|default:"unknown" }}</td>
+    {% if allow_edit %}
+    <td>{{ userkey.last_modified|default:"unknown" }}</td>
+    {% endif %}
+    <td>{{ userkey.last_used|default:"never" }}</td>
+    <td>
+    {% if allow_edit %}
+    <a href="{% url django_sshkey.views.userkey_edit userkey.pk %}">Edit</a>
+    {% endif %}
+    <a href="{% url django_sshkey.views.userkey_delete userkey.pk %}">Delete</a>
+    </td>
   </tr>
 {% endfor %}
 </table>

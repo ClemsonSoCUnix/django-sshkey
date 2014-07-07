@@ -1,0 +1,10 @@
+{{ key.user.first_name }},
+
+The following SSH public key was added to your account{% if request.META.SERVER_NAME %} on {{ request.META.SERVER_NAME }}{% endif %}{% if request.META.REMOTE_ADDR %}
+from {{ request.META.REMOTE_ADDR }}{% if request.META.REMOTE_HOST %} ({{ request.META.REMOTE_HOST }}){% endif %}{% endif %}:
+
+Name: {{ key.name }}
+Fingerprint: {{ key.fingerprint }}
+
+If you believe this key was added in error then you should go to
+{{ userkey_list_uri }} and delete the key.

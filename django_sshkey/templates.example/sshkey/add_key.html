@@ -1,0 +1,21 @@
+<html>
+<body>
+<p>{{ key.user.first_name }},</p>
+
+<p>The following SSH public key was added to your account
+{% if request.META.SERVER_NAME %}
+on {{ request.META.SERVER_NAME }}
+{% endif %}
+{% if request.META.REMOTE_ADDR %}
+from {{ request.META.REMOTE_ADDR }}{% if request.META.REMOTE_HOST %}
+({{ request.META.REMOTE_HOST }}){% endif %}{% endif %}:</p>
+
+<p>
+Name: {{ key.name }}<br/>
+Fingerprint: {{ key.fingerprint }}
+</p>
+
+<p><b>If you believe this key was added in error then you should
+<a href="{{ userkey_list_uri }}">click here</a> and delete the key.</b></p>
+</body>
+</html>

@@ -27,14 +27,70 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+usage() {
+  echo "Usage: $0 -a URL"
+  echo "       $0 -u URL USERNAME"
+  echo "       $0 -f URL FINGERPRINT"
+  echo "       $0 URL [USERNAME]"
+}
+
+mode=x
+while getopts ':hafu' opt; do
+  case $opt in
+    h)
+      usage
+      exit 0
+    ;;
+    a) mode=a ;;
+    f) mode=f ;;
+    u) mode=u ;;
+    [?])
+      exec 1>&2
+      echo "Invalid option: -$OPTARG"
+      usage
+      exit 1
+    ;;
+  esac
+done
+shift $(($OPTIND-1))
+
 if [ $# -eq 0 ]; then
-  echo "Usage: $0 URL [USERNAME]" >&2
+  usage >&2
   exit 1
 fi
-SSHKEY_LOOKUP_URL="$1"
-export SSHKEY_LOOKUP_URL
-if [ $# -eq 1 ]; then
-  exec `dirname $0`/django-sshkey-lookup-by-fingerprint
+url="$1"
+
+case $mode in
+  a)
+    query=
+  ;;
+  f)
+    if [ $# -lt 2 ]; then
+      usage >&2
+      exit 1
+    fi
+    query="fingerprint=$2"
+  ;;
+  u)
+    if [ $# -lt 2 ]; then
+      usage >&2
+      exit 1
+    fi
+    query="username=$2"
+  ;;
+  x)
+    if [ $# -eq 1 ]; then
+      SSHKEY_LOOKUP_URL="${url}"
+      export SSHKEY_LOOKUP_URL
+      exec `dirname $0`/django-sshkey-lookup-by-fingerprint
+    else
+      query="username=$2"
+    fi
+  ;;
+esac
+
+if type curl >/dev/null 2>&1; then
+  exec curl -s -G "${url}" --data-urlencode "${query}"
 else
-  exec `dirname $0`/django-sshkey-lookup-by-username "$2"
+  exec wget -q -O - "${url}?${query}"
 fi

@@ -29,13 +29,10 @@
 from django.conf import settings
 
 SSHKEY_AUTHORIZED_KEYS_OPTIONS = getattr(settings, 'SSHKEY_AUTHORIZED_KEYS_OPTIONS', None)
-SSHKEY_AUTHORIZED_KEYS_COMMAND = getattr(settings, 'SSHKEY_AUTHORIZED_KEYS_COMMAND', None)
-if SSHKEY_AUTHORIZED_KEYS_COMMAND is not None:
-  import warnings
-  with warnings.catch_warnings():
-    import warnings
-    warnings.simplefilter('default', DeprecationWarning)
-    warnings.warn(
-      'SSHKEY_AUTHORIZED_KEYS_COMMAND has been deprecated; '
-      'use SSHKEY_AUTHORIZED_KEYS_OPTIONS instead.',
-      DeprecationWarning)
+SSHKEY_ALLOW_EDIT = getattr(settings, 'SSHKEY_ALLOW_EDIT', False)
+SSHKEY_EMAIL_ADD_KEY = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY', True)
+SSHKEY_EMAIL_ADD_KEY_SUBJECT = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY_SUBJECT',
+  "A new public key was added to your account"
+)
+SSHKEY_FROM_EMAIL = getattr(settings, 'SSHKEY_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)
+SSHKEY_SEND_HTML_EMAIL = getattr(settings, 'SSHKEY_SEND_HTML_EMAIL', False)
