@@ -28,6 +28,7 @@
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.decorators.http import require_http_methods, require_GET
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, render_to_response
 from django.template import RequestContext
 from django.contrib import messages
@@ -39,8 +40,14 @@ from django_sshkey import settings
 from django_sshkey.models import UserKey
 from django_sshkey.forms import UserKeyForm
 
-@require_GET
+@require_http_methods(['GET', 'POST'])
+@csrf_exempt
 def lookup(request):
+  if request.method == 'POST':
+    payload = request.read()
+    key = UserKey.objects.get(id=int(payload))
+    key.touch()
+    return HttpResponse(str(key.last_used), mimetype='text/plain')
   try:
     fingerprint = request.GET['fingerprint']
     keys = UserKey.objects.filter(fingerprint=fingerprint)
