@@ -21,16 +21,29 @@ should be a string containing options accepted by sshd, with ``{username}``
 being replaced with the username of the user associated with the incoming
 public key.
 
+django-sshkey can also help you keep track of when a key was last used.
+``SSHKEY_AUTHORIZED_KEYS_OPTIONS`` also replaces ``{key_id}`` with the key's
+id.  The command that is run can then notify django-sshkey that the key was used
+by issuing a HTTP POST to the lookup URL, placing the key_id in the request
+body.
+
 For instance::
 
-  SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="my-command {username}",no-pty'
+  SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="my-command {username} {key_id}",no-pty'
 
 in settings.py will cause keys produced by the below commands to look similar
 to::
 
-  command="my-command fred",no-pty ssh-rsa AAAAB3NzaC1yc2E...
+  command="my-command fred 15",no-pty ssh-rsa AAAAB3NzaC1yc2E...
 
-assuming the key ``AAAAB3NzaC1yc2E...`` is owned by fred.
+sshd would then verify the key is correct and run ``my-command``.
+``my-command`` would then know that this is fred and that he is using key 15,
+and could tell django-sshkey to update the last_used field of that key by
+running the equivalent of this command::
+
+  curl -d 15 http://localhost:8000/sshkey/lookup
+
+Your URL may vary depending upon your configuration.
 
 URL Configuration
 -----------------
@@ -57,6 +70,52 @@ mapping.
   and only the systems that need to run the lookup commands should have access
   to it.
 
+Settings
+--------
+
+``SSHKEY_AUTHORIZED_KEYS_OPTIONS``
+  String, optional.  Defines the SSH options that will be prepended to each
+  public key.  ``{username}`` will be replaced by the username; ``{key_id}``
+  will be replaced by the key's id.  New in version 2.3.
+
+``SSHKEY_ALLOW_EDIT``
+  Boolean, defaults to ``False``.  Whether or not editing keys is allowed.
+  Note that no email will be sent in any case when a key is edited, hence the
+  reason that editing keys is disabled by default.  New in version 2.3.
+
+``SSHKEY_EMAIL_ADD_KEY``
+  Boolean, defaults to ``True``.  Whether or not an email should be sent to the
+  user when a new key is added to their account.  New in version 2.3.
+
+``SSHKEY_EMAIL_ADD_KEY_SUBJECT``
+  String, defaults to ``"A new key was added to your account"``.  The subject of
+  the email that gets sent out when a new key is added.  New in version 2.3.
+
+``SSHKEY_FROM_EMAIL``
+  String, defaults to ``DEFAULT_FROM_EMAIL``.  New in version 2.3.
+
+``SSHKEY_SEND_HTML_EMAIL``
+  Boolean, defaults to ``False``.  Whether or not multipart HTML emails should
+  be sent.  New in version 2.3.
+
+Templates
+---------
+
+Example templates are available in the ``templates.example`` directory.
+
+``sshkey/userkey_list.html``
+  Used when listing a user's keys.
+
+``sshkey/userkey_detail.html``
+  Used when adding or editing a user's keys.
+
+``sshkey/add_key.txt``
+  The plain text body of the email sent when a new key is added.  New in version
+  2.3.
+
+``sshkey/add_key.html``
+  The HTML body of the email sent when a new key is added.  New in version 2.3.
+
 Tying OpenSSH to django-sshkey
 ==============================
 
@@ -82,6 +141,39 @@ of the lookup commands implemented purely in Python.  However, they are *much*
 slower.  To use the variants, replace ``lookup`` with ``pylookup``.  For
 example, use ``django-sshkey-pylookup-all`` instead of
 ``django-sshkey-lookup-all``.
+
+Using ``django-sshkey-lookup``
+------------------------------
+
+::
+
+  Usage: django-sshkey-lookup -a URL
+         django-sshkey-lookup -u URL USERNAME
+         django-sshkey-lookup -f URL FINGERPRINT
+         django-sshkey-lookup URL [USERNAME]
+
+This program has different modes of operation:
+
+``-a``
+  Print all public keys.
+
+``-u``
+  Print all public keys owned by the specified user.
+
+``-f``
+  Print all public keys matching the specified fingerprint.
+
+Default
+  Compatibility mode.  If the username parameter is given then print all public
+  keys owned by the specified user; otherwise perform the same functionality as
+  ``django-sshkey-lookup-by-fingerprint`` (see below).
+
+All modes expect that the lookup URL be specified as the first non-option
+parameter.
+
+This command is compatible with the old script ``lookup.sh`` but was renamed
+to have a less ambiguous name when installed system-wide. A symlink is left in
+its place for backwards compatibility.
 
 Using ``django-sshkey-lookup-all``
 ----------------------------------
@@ -150,20 +242,6 @@ This program:
 
 * is ideal if you want all Django users to access SSH via a shared system user
   account and be identified by their SSH public key.
-
-Using ``django-sshkey-lookup``
-------------------------------
-
-``Usage: django-sshkey-lookup URL [USERNAME]``
-
-This program is a wrapper around the previous two commands.  The first
-parameter is placed in the ``SSHKEY_LOOKUP_URL`` environment variable.  If the
-second parameter is present then ``django-sshkey-lookup-by-username`` is
-executed; otherwise ``django-sshkey-lookup-by-fingerprint`` is executed.
-
-This command is compatible with the old script ``lookup.sh`` but was renamed
-to have a less ambiguous name when installed system-wide. A symlink is left in
-its place for backwards compatibility.
 
 .. _OpenSSH: http://www.openssh.com/
 .. _openssh-akcenv: https://github.com/ScottDuckworth/openssh-akcenv
