@@ -29,7 +29,7 @@
 from django.conf import settings
 
 SSHKEY_AUTHORIZED_KEYS_OPTIONS = getattr(settings, 'SSHKEY_AUTHORIZED_KEYS_OPTIONS', None)
-SSHKEY_ALLOW_EDIT = getattr(settings, 'SSHKEY_ALLOW_EDIT', True)
+SSHKEY_ALLOW_EDIT = getattr(settings, 'SSHKEY_ALLOW_EDIT', False)
 SSHKEY_EMAIL_ADD_KEY = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY', True)
 SSHKEY_EMAIL_ADD_KEY_SUBJECT = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY_SUBJECT',
   "A new public key was added to your account"

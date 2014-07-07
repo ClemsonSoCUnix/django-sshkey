@@ -17,7 +17,9 @@ The following table maps django-sshkey version to migration labels:
 +---------+---------------+-------+------------------------------------------+
 | 1.1     | sshkey        | 0002  |                                          |
 +---------+---------------+-------+------------------------------------------+
-| 2.0+    | django_sshkey | 0001  | See Upgrading from 1.1.x to 2.x below    |
+| 2.0-2.2 | django_sshkey | 0001  | See Upgrading from 1.1.x to 2.x below    |
++---------+---------------+-------+------------------------------------------+
+| 2.3     | django_sshkey | 0002  |                                          |
 +---------+---------------+-------+------------------------------------------+
 
 To upgrade, install the new version of django-sshkey and then migrate your
