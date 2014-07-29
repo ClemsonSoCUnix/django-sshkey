@@ -47,7 +47,7 @@ def lookup(request):
     payload = request.read()
     key = UserKey.objects.get(id=int(payload))
     key.touch()
-    return HttpResponse(str(key.last_used), mimetype='text/plain')
+    return HttpResponse(str(key.last_used), content_type='text/plain')
   try:
     fingerprint = request.GET['fingerprint']
     keys = UserKey.objects.filter(fingerprint=fingerprint)
@@ -67,7 +67,7 @@ def lookup(request):
     else:
       options = ''
     response += options + key.key + '\n'
-  return HttpResponse(response, mimetype='text/plain')
+  return HttpResponse(response, content_type='text/plain')
 
 @login_required
 @require_GET
