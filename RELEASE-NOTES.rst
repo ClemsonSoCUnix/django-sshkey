@@ -2,6 +2,13 @@
 Release Notes for django-sshkey
 ===============================
 
+2.3.1 (2014-07-29)
+------------------
+
+* Add support for Django 1.6
+* Add missing dependency for pyasn1 (introduced in 2.3.0)
+* Add release notes (this file)
+
 2.3.0 (2014-07-07)
 ------------------
 
