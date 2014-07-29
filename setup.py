@@ -73,4 +73,7 @@ setup(
       'django-sshkey-pylookup-by-fingerprint = django_sshkey.util:lookup_by_fingerprint_main',
     ],
   },
+  install_requires = [
+    'pyasn1',
+  ],
 )
