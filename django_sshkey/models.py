@@ -26,13 +26,16 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+try:
+  from django.utils.timezone import now
+except ImportError:
+  import datetime
+  now = datetime.datetime.now
 from django_sshkey.util import PublicKeyParseError, pubkey_parse
 from django_sshkey import settings
 
@@ -101,11 +104,11 @@ class UserKey(models.Model):
 
   def save(self, *args, **kwargs):
     if kwargs.pop('update_last_modified', True):
-      self.last_modified = datetime.datetime.now()
+      self.last_modified = now()
     super(UserKey, self).save(*args, **kwargs)
 
   def touch(self):
-    self.last_used = datetime.datetime.now()
+    self.last_used = now()
     self.save(update_last_modified=False)
 
 @receiver(pre_save, sender=UserKey)
