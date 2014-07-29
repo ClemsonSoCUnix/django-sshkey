@@ -12,7 +12,7 @@ Release Notes for django-sshkey
 * django-sshkey-lookup can now use any method to lookup keys: all, by username,
   by fingerprint, or compatibility mode
 * Add ability to send email to user when a key is added to their account
-* Add settings:
+* Add the following settings
     * SSHKEY_ALLOW_EDIT
     * SSHKEY_EMAIL_ADD_KEY
     * SSHKEY_EMAIL_ADD_KEY_SUBJECT
@@ -28,7 +28,7 @@ Release Notes for django-sshkey
 * Basic compatability with Django > 1.3
 * OpenSSH patch removed, refer to their separate projects
 * Remove deprecated sshkey_authorized_keys_command management command
-* Provide a different set of lookup commands:
+* Add the following lookup commands
     * django-sshkey-lookup-all
     * django-sshkey-lookup-by-fingerprint
     * django-sshkey-lookup-by-username
