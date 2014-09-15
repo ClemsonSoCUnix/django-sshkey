@@ -1,6 +1,7 @@
 include LICENSE
 include README.rst
 include README.upgrading.rst
+include RELEASE-NOTES.rst
 include lookup.py
 include lookup.sh
 include django-sshkey-lookup

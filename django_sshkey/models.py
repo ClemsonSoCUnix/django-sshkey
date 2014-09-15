@@ -60,8 +60,13 @@ class UserKey(models.Model):
   def clean_fields(self, exclude=None):
     if not exclude or 'key' not in exclude:
       self.key = self.key.strip()
+      if not self.key:
+        raise ValidationError({'key': ["This field is required."]})
 
   def clean(self):
+    self.key = self.key.strip()
+    if not self.key:
+      return
     try:
       pubkey = pubkey_parse(self.key)
     except PublicKeyParseError as e:

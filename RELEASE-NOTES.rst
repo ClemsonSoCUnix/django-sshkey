@@ -2,6 +2,12 @@
 Release Notes for django-sshkey
 ===============================
 
+2.3.2 (2014-09-15)
+------------------
+
+* Bug fix #1: entering whitespace for key field results in IndexError
+* Make example templates work with Django 1.4+
+
 2.3.1 (2014-07-29)
 ------------------
 

@@ -255,6 +255,23 @@ class UserKeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
+  def test_blank_key_fails(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name1',
+      key = '',
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
+  def test_ws_key_fails(self):
+    key = UserKey(
+      user = self.user1,
+      name = 'name1',
+      key = '     ',
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
+
 class RFC4716TestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
