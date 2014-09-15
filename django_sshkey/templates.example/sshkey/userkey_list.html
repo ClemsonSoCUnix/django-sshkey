@@ -1,3 +1,4 @@
+{% load url from future %}
 <h1>My Keys</h1>
 {% if messages %}
 <ul class="messages">
@@ -6,7 +7,7 @@
   {% endfor %}
 </ul>
 {% endif %}
-<p><a href="{% url django_sshkey.views.userkey_add %}">Add Key</a></p>
+<p><a href="{% url "django_sshkey.views.userkey_add" %}">Add Key</a></p>
 <table>
   <tr>
     <th>Key</th>
@@ -29,9 +30,9 @@
     <td>{{ userkey.last_used|default:"never" }}</td>
     <td>
     {% if allow_edit %}
-    <a href="{% url django_sshkey.views.userkey_edit userkey.pk %}">Edit</a>
+    <a href="{% url "django_sshkey.views.userkey_edit" userkey.pk %}">Edit</a>
     {% endif %}
-    <a href="{% url django_sshkey.views.userkey_delete userkey.pk %}">Delete</a>
+    <a href="{% url "django_sshkey.views.userkey_delete" userkey.pk %}">Delete</a>
     </td>
   </tr>
 {% endfor %}
