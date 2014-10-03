@@ -31,7 +31,7 @@ from django.test.client import Client
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
-from django_sshkey.models import UserKey
+from django_sshkey.models import UserKey, BaseKey
 from django_sshkey import settings
 import os
 import shutil
@@ -66,6 +66,9 @@ def ssh_fingerprint(pubkey_path):
   stdout, stderr = p.communicate()
   fingerprint = stdout.split(None, 2)[1]
   return fingerprint
+
+class TestKey(BaseKey):
+  pass
 
 class BaseTestCase(TestCase):
   @classmethod
@@ -501,3 +504,52 @@ class UserKeyLookupTestCase(BaseTestCase):
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
     self.assertEqual(response.content, '')
+
+class BaseKeyTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(BaseKeyTestCase, cls).setUpClass()
+    # key1 has a comment
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+    # key2 does not have a comment
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    ssh_keygen(comment='', file=cls.key2_path)
+
+  def test_same_key(self):
+    key1 = TestKey(
+      name = 'name',
+      key = open(self.key1_path+'.pub').read(),
+    )
+    key1.full_clean()
+    key1.save()
+    key2 = TestKey(
+      name = 'name',
+      key = open(self.key2_path+'.pub').read(),
+    )
+    key2.full_clean()
+    key2.save()
+
+  def test_no_key(self):
+    key = TestKey(name='name')
+    self.assertRaises(ValidationError, key.full_clean)
+
+  def test_key_noname_comment(self):
+    key = TestKey(key=open(self.key1_path + '.pub').read())
+    key.full_clean()
+    key.save()
+    self.assertEqual('comment', key.name)
+
+  def test_key_noname_nocomment(self):
+    key = TestKey(key=open(self.key2_path + '.pub').read())
+    self.assertRaises(ValidationError, key.full_clean)
+
+  def test_touch(self):
+    import datetime
+    key = TestKey(key=open(self.key1_path + '.pub').read())
+    key.full_clean()
+    key.save()
+    self.assertEqual(None, key.last_used)
+    key.touch()
+    key.save()
+    self.assertIsInstance(key.last_used, datetime.datetime)
