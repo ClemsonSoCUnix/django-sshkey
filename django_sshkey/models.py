@@ -39,8 +39,7 @@ except ImportError:
 from django_sshkey.util import PublicKeyParseError, pubkey_parse
 from django_sshkey import settings
 
-class UserKey(models.Model):
-  user = models.ForeignKey(User, db_index=True)
+class BaseKey(models.Model):
   name = models.CharField(max_length=50, blank=True)
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
@@ -49,13 +48,10 @@ class UserKey(models.Model):
   last_used = models.DateTimeField(null=True)
 
   class Meta:
-    db_table = 'sshkey_userkey'
-    unique_together = [
-      ('user', 'name'),
-    ]
+    abstract = True
 
   def __unicode__(self):
-    return unicode(self.user) + u': ' + self.name
+    return self.name
 
   def clean_fields(self, exclude=None):
     if not exclude or 'key' not in exclude:
@@ -78,6 +74,36 @@ class UserKey(models.Model):
         raise ValidationError('Name or key comment required')
       self.name = pubkey.comment
 
+  def export(self, format='RFC4716'):
+    pubkey = pubkey_parse(self.key)
+    f = format.upper()
+    if f == 'RFC4716':
+      return pubkey.format_rfc4716()
+    if f == 'PEM':
+      return pubkey.format_pem()
+    raise ValueError("Invalid format")
+
+  def save(self, *args, **kwargs):
+    if kwargs.pop('update_last_modified', True):
+      self.last_modified = now()
+    super(BaseKey, self).save(*args, **kwargs)
+
+  def touch(self):
+    self.last_used = now()
+    self.save(update_last_modified=False)
+
+class UserKey(BaseKey):
+  user = models.ForeignKey(User, db_index=True)
+
+  class Meta:
+    db_table = 'sshkey_userkey'
+    unique_together = [
+      ('user', 'name'),
+    ]
+
+  def __unicode__(self):
+    return unicode(self.user) + u': ' + self.name
+
   def validate_unique(self, exclude=None):
     if self.pk is None:
       objects = type(self).objects
@@ -97,24 +123,6 @@ class UserKey(models.Model):
         raise ValidationError({'key': [message]})
       except type(self).DoesNotExist:
         pass
-
-  def export(self, format='RFC4716'):
-    pubkey = pubkey_parse(self.key)
-    f = format.upper()
-    if f == 'RFC4716':
-      return pubkey.format_rfc4716()
-    if f == 'PEM':
-      return pubkey.format_pem()
-    raise ValueError("Invalid format")
-
-  def save(self, *args, **kwargs):
-    if kwargs.pop('update_last_modified', True):
-      self.last_modified = now()
-    super(UserKey, self).save(*args, **kwargs)
-
-  def touch(self):
-    self.last_used = now()
-    self.save(update_last_modified=False)
 
 @receiver(pre_save, sender=UserKey)
 def send_email_add_key(sender, instance, **kwargs):
