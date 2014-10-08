@@ -110,6 +110,22 @@ class ApplicationKey(models.Model):
   def key(self):
     return self.basekey.key
 
+  @property
+  def fingerprint(self):
+    return self.basekey.fingerprint
+
+  @property
+  def created(self):
+    return self.basekey.created
+
+  @property
+  def last_modified(self):
+    return self.basekey.last_modified
+
+  @property
+  def last_used(self):
+    return self.basekey.last_used
+
 class NamedKey(ApplicationKey):
   name = models.CharField(max_length=50, blank=True)
   class Meta:

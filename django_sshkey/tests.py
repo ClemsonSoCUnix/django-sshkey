@@ -180,6 +180,34 @@ class KeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
+class ApplicationKeyTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(ApplicationKeyTestCase, cls).setUpClass()
+    # key1 has a comment
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+    cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
+    cls.key1.full_clean()
+    cls.key1.save()
+    cls.app_key1 = TestApplicationKey(basekey=cls.key1)
+    cls.app_key1.save()
+
+  def test_key_attribute(self):
+    self.assertEqual(self.key1.key, self.app_key1.key)
+
+  def test_fingerprint_attribute(self):
+    self.assertEqual(self.key1.fingerprint, self.app_key1.fingerprint)
+
+  def test_created_attribute(self):
+    self.assertEqual(self.key1.created, self.app_key1.created)
+
+  def test_last_modified_attribute(self):
+    self.assertEqual(self.key1.last_modified, self.app_key1.last_modified)
+
+  def test_last_used_attribute(self):
+    self.assertEqual(self.key1.last_used, self.app_key1.last_used)
+
 class NamedKeyTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
