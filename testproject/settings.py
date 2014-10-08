@@ -90,3 +90,4 @@ import getpass
 import socket
 DEFAULT_FROM_EMAIL = '%s@%s' % (getpass.getuser(), socket.gethostname())
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+SOUTH_TESTS_MIGRATE = False
