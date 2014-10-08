@@ -27,22 +27,52 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django import forms
-from django_sshkey.models import Key
+from django_sshkey.models import Key, UserKey
+from django_sshkey.util import pubkey_parse
 
-class UserKeyForm(forms.ModelForm):
-  name = forms.CharField(max_length=50, required=False)
+class ApplicationKeyForm(forms.ModelForm):
+  key = forms.CharField(max_length=2000, required=True)
+
+  def clean(self):
+    cleaned_data = self.cleaned_data
+    if 'key' in cleaned_data:
+      key = cleaned_data['key'] = Key(key=cleaned_data['key'])
+      key.full_clean()
+    return cleaned_data
+
+  def save(self, commit=True):
+    instance = super(ApplicationKeyForm, self).save(commit=False)
+    if commit:
+      basekey = self.cleaned_data['key']
+      basekey.save()
+      instance.basekey = basekey
+      instance.save()
+    return instance
+
+class NamedKeyForm(ApplicationKeyForm):
+  def clean(self):
+    cleaned_data = super(NamedKeyForm, self).clean()
+    if 'key' in cleaned_data and not cleaned_data.get('name'):
+      pubkey = pubkey_parse(cleaned_data['key'].key)
+      if not pubkey.comment:
+        raise ValidationError('Name or key comment required')
+      cleaned_data['name'] = pubkey.comment
+    return cleaned_data
+
+class UserKeyForm(NamedKeyForm):
 
   class Meta:
-    model = Key
+    model = UserKey
     fields = ['name', 'key']
+    exclude = ['basekey']
     widgets = {
-      'name': forms.TextInput(attrs={
-        'size': 50,
-        'placeholder': "username@hostname, or leave blank to use key comment",
-      }),
       'key': forms.Textarea(attrs={
         'cols': 72,
         'rows': 15,
         'placeholder': "Paste in the contents of your public key file here",
       }),
+      'name': forms.TextInput(attrs={
+        'size': 50,
+        'placeholder': "username@hostname, or leave blank to use key comment",
+      })
     }

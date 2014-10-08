@@ -31,6 +31,7 @@ from django.test.client import Client
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
+from django_sshkey.forms import UserKeyForm
 from django_sshkey.models import Key, ApplicationKey, NamedKey, UserKey
 from django_sshkey import settings
 import os
@@ -262,7 +263,7 @@ class NamedKeyTestCase(BaseTestCase):
       basekey = self.key2,
     )
     self.assertRaises(ValidationError, key.full_clean)
-  
+
 
 class UserKeyTestCase(BaseTestCase):
   @classmethod
@@ -572,3 +573,43 @@ class KeyLookupTestCase(BaseTestCase):
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
     self.assertEqual(response.content, '')
+
+class UserKeyFormTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(UserKeyFormTestCase, cls).setUpClass()
+    cls.user1 = User.objects.create(username='user1')
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+
+  def test_save_without_name(self):
+    instance = UserKey(user=self.user1)
+    post = {
+      'key': open(self.key1_path + '.pub').read(),
+    }
+    form = UserKeyForm(post, instance=instance)
+    self.assertTrue(form.is_valid(), form.errors)
+    key = form.save()
+    self.assertEqual('comment', key.name)
+
+  def test_save_with_name(self):
+    instance = UserKey(user=self.user1)
+    post = {
+      'key': open(self.key1_path + '.pub').read(),
+      'name': 'name',
+    }
+    form = UserKeyForm(post, instance=instance)
+    self.assertTrue(form.is_valid(), form.errors)
+    key = form.save()
+    self.assertEqual('name', key.name)
+
+  def test_save_blank_name(self):
+    instance = UserKey(user=self.user1)
+    post = {
+      'key': open(self.key1_path + '.pub').read(),
+      'name': '',
+    }
+    form = UserKeyForm(post, instance=instance)
+    self.assertTrue(form.is_valid(), form.errors)
+    key = form.save()
+    self.assertEqual('comment', key.name)

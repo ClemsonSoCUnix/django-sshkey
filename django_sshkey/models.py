@@ -50,7 +50,10 @@ class Key(models.Model):
     db_table = 'sshkey_key'
 
   def __unicode__(self):
-    return unicode(self.user) + u': ' + self.name
+    if self.fingerprint:
+      return self.fingerprint
+    else:
+      return self.key[:20] + u'...'
 
   def clean_fields(self, exclude=None):
     if not exclude or 'key' not in exclude:
@@ -133,10 +136,13 @@ class NamedKey(ApplicationKey):
 
   def clean(self):
     if not self.name:
-      pubkey = pubkey_parse(self.key)
-      if not pubkey.comment:
-        raise ValidationError('Name or key comment required')
-      self.name = pubkey.comment
+      try:
+        pubkey = pubkey_parse(self.key)
+        if not pubkey.comment:
+          raise ValidationError('Name or key comment required')
+        self.name = pubkey.comment
+      except Key.DoesNotExist:
+        pass
 
 class UserKey(NamedKey):
   user = models.ForeignKey(User, db_index=True)
