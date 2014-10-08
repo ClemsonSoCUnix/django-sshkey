@@ -39,9 +39,7 @@ except ImportError:
 from django_sshkey.util import PublicKeyParseError, pubkey_parse
 from django_sshkey import settings
 
-class UserKey(models.Model):
-  user = models.ForeignKey(User, db_index=True)
-  name = models.CharField(max_length=50, blank=True)
+class Key(models.Model):
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
@@ -49,10 +47,7 @@ class UserKey(models.Model):
   last_used = models.DateTimeField(null=True)
 
   class Meta:
-    db_table = 'sshkey_userkey'
-    unique_together = [
-      ('user', 'name'),
-    ]
+    db_table = 'sshkey_key'
 
   def __unicode__(self):
     return unicode(self.user) + u': ' + self.name
@@ -73,27 +68,16 @@ class UserKey(models.Model):
       raise ValidationError(str(e))
     self.key = pubkey.format_openssh()
     self.fingerprint = pubkey.fingerprint()
-    if not self.name:
-      if not pubkey.comment:
-        raise ValidationError('Name or key comment required')
-      self.name = pubkey.comment
 
   def validate_unique(self, exclude=None):
     if self.pk is None:
       objects = type(self).objects
     else:
       objects = type(self).objects.exclude(pk=self.pk)
-    if exclude is None or 'name' not in exclude:
-      if objects.filter(user=self.user, name=self.name).count():
-        message = 'You already have a key with that name'
-        raise ValidationError({'name': [message]})
     if exclude is None or 'key' not in exclude:
       try:
         other = objects.get(fingerprint=self.fingerprint, key=self.key)
-        if self.user == other.user:
-          message = 'You already have that key on file (%s)' % other.name
-        else:
-          message = 'Somebody else already has that key on file'
+        message = 'That key is already on file.'
         raise ValidationError({'key': [message]})
       except type(self).DoesNotExist:
         pass
@@ -110,11 +94,57 @@ class UserKey(models.Model):
   def save(self, *args, **kwargs):
     if kwargs.pop('update_last_modified', True):
       self.last_modified = now()
-    super(UserKey, self).save(*args, **kwargs)
+    super(Key, self).save(*args, **kwargs)
 
   def touch(self):
     self.last_used = now()
     self.save(update_last_modified=False)
+
+class ApplicationKey(models.Model):
+  basekey = models.ForeignKey(Key)
+
+  class Meta:
+    abstract = True
+
+  @property
+  def key(self):
+    return self.basekey.key
+
+class NamedKey(ApplicationKey):
+  name = models.CharField(max_length=50, blank=True)
+  class Meta:
+    abstract = True
+
+  def clean(self):
+    if not self.name:
+      pubkey = pubkey_parse(self.key)
+      if not pubkey.comment:
+        raise ValidationError('Name or key comment required')
+      self.name = pubkey.comment
+
+class UserKey(NamedKey):
+  user = models.ForeignKey(User, db_index=True)
+
+  class Meta:
+    db_table = 'sshkey_userkey'
+    unique_together = [
+      ('user', 'name'),
+    ]
+
+  def validate_unique(self, exclude=None):
+    cls = type(self)
+    if not self.pk is None:
+      qs = cls.objects.exclude(pk=pk)
+    else:
+      qs = cls.objects.all()
+    if exclude is None or 'name' not in exclude:
+      if qs.filter(user=self.user, name=self.name).count():
+        message = 'You already have a key with that name'
+        raise ValidationError({'name': [message]})
+    if exclude is None or 'basekey' not in exclude:
+      if qs.filter(basekey=self.basekey):
+        message = 'Cannot associate key with two users.'
+        raise ValidationError({'basekey': [message]})
 
 @receiver(pre_save, sender=UserKey)
 def send_email_add_key(sender, instance, **kwargs):

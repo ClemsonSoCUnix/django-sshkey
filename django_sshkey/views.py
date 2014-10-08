@@ -50,7 +50,7 @@ def lookup(request):
     return HttpResponse(str(key.last_used), content_type='text/plain')
   try:
     fingerprint = request.GET['fingerprint']
-    keys = UserKey.objects.filter(fingerprint=fingerprint)
+    keys = UserKey.objects.filter(basekey__fingerprint=fingerprint)
   except KeyError:
     try:
       username = request.GET['username']

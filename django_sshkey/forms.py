@@ -27,11 +27,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django import forms
-from django_sshkey.models import UserKey
+from django_sshkey.models import Key
 
 class UserKeyForm(forms.ModelForm):
+  name = forms.CharField(max_length=50, required=False)
+
   class Meta:
-    model = UserKey
+    model = Key
     fields = ['name', 'key']
     widgets = {
       'name': forms.TextInput(attrs={
