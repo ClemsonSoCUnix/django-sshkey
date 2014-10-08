@@ -31,7 +31,7 @@ from django.test.client import Client
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
-from django_sshkey.models import UserKey
+from django_sshkey.models import Key, ApplicationKey, NamedKey, UserKey
 from django_sshkey import settings
 import os
 import shutil
@@ -67,6 +67,12 @@ def ssh_fingerprint(pubkey_path):
   fingerprint = stdout.split(None, 2)[1]
   return fingerprint
 
+class TestApplicationKey(ApplicationKey):
+  pass
+
+class TestNamedKey(NamedKey):
+  pass
+
 class BaseTestCase(TestCase):
   @classmethod
   def setUpClass(cls):
@@ -78,10 +84,10 @@ class BaseTestCase(TestCase):
       shutil.rmtree(cls.key_dir)
       cls.key_dir = None
 
-class UserKeyCreationTestCase(BaseTestCase):
+class KeyCreationTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
-    super(UserKeyCreationTestCase, cls).setUpClass()
+    super(KeyCreationTestCase, cls).setUpClass()
     cls.user1 = User.objects.create(username='user1')
     cls.user2 = User.objects.create(username='user2')
     # key1 has a comment
@@ -94,75 +100,39 @@ class UserKeyCreationTestCase(BaseTestCase):
   @classmethod
   def tearDownClass(cls):
     User.objects.all().delete()
-    super(UserKeyCreationTestCase, cls).tearDownClass()
+    super(KeyCreationTestCase, cls).tearDownClass()
 
   def tearDown(self):
-    UserKey.objects.all().delete()
-
-  def test_with_name_with_comment(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
-    )
-    key.full_clean()
-    key.save()
-    self.assertEqual(key.name, 'name')
-
-  def test_with_name_without_comment(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key2_path+'.pub').read(),
-    )
-    key.full_clean()
-    key.save()
-    self.assertEqual(key.name, 'name')
-
-  def test_without_name_with_comment(self):
-    key = UserKey(
-      user = self.user1,
-      key = open(self.key1_path+'.pub').read(),
-    )
-    key.full_clean()
-    key.save()
-    self.assertEqual(key.name, 'comment')
-
-  def test_without_name_without_comment_fails(self):
-    key = UserKey(
-      user = self.user1,
-      key = open(self.key2_path+'.pub').read(),
-    )
-    self.assertRaises(ValidationError, key.full_clean)
+    Key.objects.all().delete()
 
   def test_private_key_fails(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_path).read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_invalid_key_fails(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = 'ssh-rsa invalid',
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_key_with_options_fails(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = 'command="foobar" ' + open(self.key1_path+'.pub').read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_multiple_keys_fails(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_path+'.pub').read() \
           + open(self.key2_path+'.pub').read(),
     )
@@ -170,9 +140,9 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_fingerprint(self):
     fingerprint = ssh_fingerprint(self.key1_path+'.pub')
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
@@ -181,9 +151,9 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_touch(self):
     import datetime
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
@@ -194,11 +164,106 @@ class UserKeyCreationTestCase(BaseTestCase):
     self.assertIsInstance(key.last_used, datetime.datetime)
     key.touch()
 
+  def test_blank_key_fails(self):
+    key = Key(
+      #user = self.user1,
+      #name = 'name1',
+      key = '',
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
+  def test_ws_key_fails(self):
+    key = Key(
+      #user = self.user1,
+      #name = 'name1',
+      key = '     ',
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+
+class NamedKeyTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(NamedKeyTestCase, cls).setUpClass()
+    # key1 has a comment
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+    cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
+    cls.key1.full_clean()
+    cls.key1.save()
+
+    # key2 does not have a comment
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    ssh_keygen(comment='', file=cls.key2_path)
+    cls.key2 = Key(key=open(cls.key2_path + '.pub').read())
+    cls.key2.full_clean()
+    cls.key2.save()
+
+  def test_with_name_with_comment(self):
+    key = TestNamedKey(
+      name = 'name',
+      basekey = self.key1,
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.name, 'name')
+
+  def test_with_name_without_comment(self):
+    key = TestNamedKey(
+      name = 'name',
+      basekey = self.key2,
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.name, 'name')
+
+  def test_without_name_with_comment(self):
+    key = TestNamedKey(
+      basekey = self.key1,
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.name, 'comment')
+
+  def test_without_name_without_comment_fails(self):
+    key = TestNamedKey(
+      basekey = self.key2,
+    )
+    self.assertRaises(ValidationError, key.full_clean)
+  
+
+class UserKeyTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(UserKeyTestCase, cls).setUpClass()
+    cls.user1 = User.objects.create(username='user1')
+    cls.user2 = User.objects.create(username='user2')
+
+    # key1 has a comment
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    ssh_keygen(comment='comment', file=cls.key1_path)
+
+    # key2 does not have a comment
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    ssh_keygen(comment='', file=cls.key2_path)
+
+    # make the Key models
+    cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
+    cls.key1.full_clean()
+    cls.key1.save()
+    cls.key2 = Key(key=open(cls.key2_path + '.pub').read())
+    cls.key2.full_clean()
+    cls.key2.save()
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(UserKeyTestCase, cls).tearDownClass()
+
   def test_same_name_same_user(self):
     key1 = UserKey(
       user = self.user1,
       name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      basekey = self.key1,
     )
     key1.full_clean()
     key1.save()
@@ -206,6 +271,7 @@ class UserKeyCreationTestCase(BaseTestCase):
       user = self.user1,
       name = 'name',
       key = open(self.key2_path+'.pub').read(),
+      basekey = self.key2,
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
@@ -213,14 +279,14 @@ class UserKeyCreationTestCase(BaseTestCase):
     key1 = UserKey(
       user = self.user1,
       name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      basekey = self.key1,
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
       user = self.user2,
       name = 'name',
-      key = open(self.key2_path+'.pub').read(),
+      basekey = self.key2,
     )
     key2.full_clean()
     key2.save()
@@ -229,47 +295,32 @@ class UserKeyCreationTestCase(BaseTestCase):
     key1 = UserKey(
       user = self.user1,
       name = 'name1',
-      key = open(self.key1_path+'.pub').read(),
+      basekey = self.key1,
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
       user = self.user1,
       name = 'name2',
-      key = open(self.key1_path+'.pub').read(),
+      basekey = self.key1,
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
   def test_same_key_different_user(self):
     key1 = UserKey(
+      basekey = self.key1,
       user = self.user1,
       name = 'name1',
-      key = open(self.key1_path+'.pub').read(),
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
+      basekey = self.key1,
       user = self.user2,
       name = 'name2',
-      key = open(self.key1_path+'.pub').read(),
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
-  def test_blank_key_fails(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name1',
-      key = '',
-    )
-    self.assertRaises(ValidationError, key.full_clean)
-
-  def test_ws_key_fails(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name1',
-      key = '     ',
-    )
-    self.assertRaises(ValidationError, key.full_clean)
 
 
 class RFC4716TestCase(BaseTestCase):
@@ -294,12 +345,12 @@ class RFC4716TestCase(BaseTestCase):
     super(RFC4716TestCase, cls).tearDownClass()
 
   def tearDown(self):
-    UserKey.objects.all().delete()
+    Key.objects.all().delete()
 
   def test_import_with_comment(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_rfc4716_path).read(),
     )
     key.full_clean()
@@ -307,9 +358,9 @@ class RFC4716TestCase(BaseTestCase):
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
   def test_import_without_comment(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key2_rfc4716_path).read(),
     )
     key.full_clean()
@@ -317,9 +368,9 @@ class RFC4716TestCase(BaseTestCase):
     self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
 
   def test_export(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
@@ -347,12 +398,12 @@ class PemTestCase(BaseTestCase):
     super(PemTestCase, cls).tearDownClass()
 
   def tearDown(self):
-    UserKey.objects.all().delete()
+    Key.objects.all().delete()
 
   def test_import(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_pem_path).read(),
     )
     key.full_clean()
@@ -360,9 +411,9 @@ class PemTestCase(BaseTestCase):
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
   def test_export(self):
-    key = UserKey(
-      user = self.user1,
-      name = 'name',
+    key = Key(
+      #user = self.user1,
+      #name = 'name',
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
@@ -374,44 +425,29 @@ class PemTestCase(BaseTestCase):
     ssh_key_import(export_path, import_path, 'PEM')
     self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
-class UserKeyLookupTestCase(BaseTestCase):
+class KeyLookupTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
-    super(UserKeyLookupTestCase, cls).setUpClass()
+    super(KeyLookupTestCase, cls).setUpClass()
     cls.original_options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS
     settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = 'command="{username} {key_id}"'
     cls.user1 = User.objects.create(username='user1')
     cls.user2 = User.objects.create(username='user2')
 
-    cls.key1_path = os.path.join(cls.key_dir, 'key1')
-    ssh_keygen(file=cls.key1_path)
-    cls.key1 = UserKey(
-      user = cls.user1,
-      name = 'key1',
-      key = open(cls.key1_path+'.pub').read(),
-    )
-    cls.key1.full_clean()
-    cls.key1.save()
+    def generate_key(name, user):
+      path = os.path.join(cls.key_dir, name)
+      ssh_keygen(file=path)
+      key = Key(key=open(path + '.pub').read())
+      key.full_clean()
+      key.save()
+      userkey = UserKey(basekey=key, name=name, user=user)
+      userkey.full_clean()
+      userkey.save()
+      return path, key, userkey
 
-    cls.key2_path = os.path.join(cls.key_dir, 'key2')
-    ssh_keygen(file=cls.key2_path)
-    cls.key2 = UserKey(
-      user = cls.user1,
-      name = 'key2',
-      key = open(cls.key2_path+'.pub').read(),
-    )
-    cls.key2.full_clean()
-    cls.key2.save()
-
-    cls.key3_path = os.path.join(cls.key_dir, 'key3')
-    ssh_keygen(file=cls.key3_path)
-    cls.key3 = UserKey(
-      user = cls.user2,
-      name = 'key3',
-      key = open(cls.key3_path+'.pub').read(),
-    )
-    cls.key3.full_clean()
-    cls.key3.save()
+    cls.key1_path, cls.key1, cls.userkey1 = generate_key('key1', cls.user1)
+    cls.key2_path, cls.key2, cls.userkey2 = generate_key('key2', cls.user1)
+    cls.key3_path, cls.key3, cls.userkey3 = generate_key('key3', cls.user2)
 
     cls.key4_path = os.path.join(cls.key_dir, 'key4')
     ssh_keygen(file=cls.key4_path)
@@ -420,7 +456,7 @@ class UserKeyLookupTestCase(BaseTestCase):
   def tearDownClass(cls):
     settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = cls.original_options
     User.objects.all().delete()
-    super(UserKeyLookupTestCase, cls).tearDownClass()
+    super(KeyLookupTestCase, cls).tearDownClass()
 
   def test_lookup_all(self):
     client = Client()
