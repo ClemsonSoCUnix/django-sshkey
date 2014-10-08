@@ -193,6 +193,11 @@ class ApplicationKeyTestCase(BaseTestCase):
     cls.app_key1 = TestApplicationKey(basekey=cls.key1)
     cls.app_key1.save()
 
+  @classmethod
+  def tearDownClass(cls):
+    Key.objects.all().delete()
+    super(ApplicationKeyTestCase, cls).tearDownClass()
+
   def test_key_attribute(self):
     self.assertEqual(self.key1.key, self.app_key1.key)
 
@@ -484,6 +489,8 @@ class KeyLookupTestCase(BaseTestCase):
   def tearDownClass(cls):
     settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = cls.original_options
     User.objects.all().delete()
+    Key.objects.all().delete()
+    UserKey.objects.all().delete()
     super(KeyLookupTestCase, cls).tearDownClass()
 
   def test_lookup_all(self):
