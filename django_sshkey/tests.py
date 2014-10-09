@@ -181,6 +181,22 @@ class KeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
+  def test_unicode1(self):
+    '''With fingerprint.'''
+    key = Key(
+      key = open(self.key1_path + '.pub').read()
+    )
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.fingerprint, unicode(key))
+
+  def test_unicode2(self):
+    '''Without fingerprint.'''
+    contents = open(self.key1_path + '.pub').read()
+    key = Key(key=contents)
+    key.save()
+    self.assertEqual(contents[:20] + '...', unicode(key))
+
 class ApplicationKeyTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
@@ -263,7 +279,6 @@ class NamedKeyTestCase(BaseTestCase):
       basekey = self.key2,
     )
     self.assertRaises(ValidationError, key.full_clean)
-
 
 class UserKeyTestCase(BaseTestCase):
   @classmethod
