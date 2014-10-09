@@ -227,14 +227,14 @@ class NamedKeyTestCase(BaseTestCase):
     # key1 has a comment
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(comment='comment', file=cls.key1_path)
-    cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
+    cls.key1 = TestNamedKey.base(key=open(cls.key1_path + '.pub').read())
     cls.key1.full_clean()
     cls.key1.save()
 
     # key2 does not have a comment
     cls.key2_path = os.path.join(cls.key_dir, 'key2')
     ssh_keygen(comment='', file=cls.key2_path)
-    cls.key2 = Key(key=open(cls.key2_path + '.pub').read())
+    cls.key2 = TestNamedKey.base(key=open(cls.key2_path + '.pub').read())
     cls.key2.full_clean()
     cls.key2.save()
 
@@ -296,10 +296,10 @@ class UserKeyTestCase(BaseTestCase):
     ssh_keygen(comment='comment', file=cls.key3_path)
 
     # make the Key models
-    cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
+    cls.key1 = UserKey.base(key=open(cls.key1_path + '.pub').read())
     cls.key1.full_clean()
     cls.key1.save()
-    cls.key2 = Key(key=open(cls.key2_path + '.pub').read())
+    cls.key2 = UserKey.base(key=open(cls.key2_path + '.pub').read())
     cls.key2.full_clean()
     cls.key2.save()
 
@@ -408,22 +408,16 @@ class RFC4716TestCase(BaseTestCase):
 
   def test_import_with_comment(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key1_rfc4716_path).read(),
     )
     key.full_clean()
-    key.save()
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
   def test_import_without_comment(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key2_rfc4716_path).read(),
     )
     key.full_clean()
-    key.save()
     self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
 
   def test_export(self):
@@ -433,7 +427,6 @@ class RFC4716TestCase(BaseTestCase):
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
-    key.save()
     export_path = os.path.join(self.key_dir, 'export')
     import_path = os.path.join(self.key_dir, 'import')
     with open(export_path, 'w') as f:
@@ -461,22 +454,16 @@ class PemTestCase(BaseTestCase):
 
   def test_import(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key1_pem_path).read(),
     )
     key.full_clean()
-    key.save()
     self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
 
   def test_export(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
-    key.save()
     export_path = os.path.join(self.key_dir, 'export')
     import_path = os.path.join(self.key_dir, 'import')
     with open(export_path, 'w') as f:
