@@ -582,6 +582,11 @@ class UserKeyFormTestCase(BaseTestCase):
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(comment='comment', file=cls.key1_path)
 
+  @classmethod
+  def tearDownClass(cls):
+    cls.user1.delete()
+    super(UserKeyFormTestCase, cls).tearDownClass()
+
   def test_save_without_name(self):
     instance = UserKey(user=self.user1)
     post = {
