@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django_sshkey.models import Key, UserKey
 from django_sshkey.util import pubkey_parse
 
@@ -40,12 +41,11 @@ class ApplicationKeyForm(forms.ModelForm):
     })
   )
 
-  def clean(self):
-    cleaned_data = self.cleaned_data
-    if 'key' in cleaned_data:
-      key = cleaned_data['key'] = Key(key=cleaned_data['key'])
-      key.full_clean()
-    return cleaned_data
+  def clean_key(self):
+    key = self.cleaned_data['key']
+    key = Key(key=key)
+    key.full_clean()
+    return key
 
   def save(self, commit=True):
     instance = super(ApplicationKeyForm, self).save(commit=False)
