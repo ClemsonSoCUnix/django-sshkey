@@ -28,6 +28,7 @@
 
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
@@ -43,6 +44,7 @@ class Key(models.Model):
   key = models.TextField(max_length=2000)
   fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
+  content_type = models.ForeignKey(ContentType)
   last_modified = models.DateTimeField(null=True)
   last_used = models.DateTimeField(null=True)
 
@@ -108,6 +110,12 @@ class ApplicationKey(models.Model):
 
   class Meta:
     abstract = True
+
+  @classmethod
+  def base(cls, **kw):
+    if not 'content_type' in kw:
+      kw['content_type'] = ContentType.objects.get_for_model(cls)
+    return Key(**kw)
 
   def __unicode__(self):
     try:
