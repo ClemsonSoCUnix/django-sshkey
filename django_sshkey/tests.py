@@ -310,6 +310,10 @@ class UserKeyTestCase(BaseTestCase):
     cls.key2_path = os.path.join(cls.key_dir, 'key2')
     ssh_keygen(comment='', file=cls.key2_path)
 
+    # key3 is safe to delete
+    cls.key3_path = os.path.join(cls.key_dir, 'key3')
+    ssh_keygen(comment='comment', file=cls.key3_path)
+
     # make the Key models
     cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
     cls.key1.full_clean()
@@ -385,7 +389,17 @@ class UserKeyTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
+  def test_delete(self):
+    basekey = Key(key=open(self.key3_path + '.pub').read())
+    basekey.full_clean()
+    basekey.save()
+    pk = basekey.pk
 
+    key1 = UserKey(basekey=basekey, user=self.user1, name='name1')
+    key1.full_clean()
+    key1.save()
+    key1.delete()
+    self.assertRaises(Key.DoesNotExist, Key.objects.get, pk=pk)
 
 class RFC4716TestCase(BaseTestCase):
   @classmethod

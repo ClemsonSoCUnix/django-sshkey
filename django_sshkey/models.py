@@ -29,7 +29,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 try:
   from django.utils.timezone import now
@@ -177,6 +177,10 @@ class UserKey(NamedKey):
       if qs.filter(basekey=self.basekey):
         message = 'Cannot associate key with two users.'
         raise ValidationError({'basekey': [message]})
+
+@receiver(post_delete, sender=UserKey)
+def delete_user_key(sender, instance, **kwargs):
+  instance.basekey.delete()
 
 @receiver(pre_save, sender=UserKey)
 def send_email_add_key(sender, instance, **kwargs):
