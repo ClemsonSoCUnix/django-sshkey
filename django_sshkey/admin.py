@@ -27,20 +27,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import admin
-from django_sshkey.models import UserKey
+from django.core.urlresolvers import reverse
+from django_sshkey.models import UserKey, Key
 
-class UserKeyAdmin(admin.ModelAdmin):
+class KeyAdmin(admin.ModelAdmin):
   list_display = [
     '__unicode__',
-    'user',
-    'name',
-    'fingerprint',
     'created',
     'last_modified',
     'last_used',
-  ]
-  search_fields = [
-    'user__username',
   ]
   readonly_fields = [
     'fingerprint',
@@ -48,5 +43,49 @@ class UserKeyAdmin(admin.ModelAdmin):
     'last_modified',
     'last_used',
   ]
+  search_fields = [
+    'fingerprint',
+  ]
 
+class ApplicationKeyAdmin(KeyAdmin):
+  list_display = [
+    '__unicode__',
+    'basekey',
+    'created',
+    'last_modified',
+    'last_used',
+  ]
+  search_fields = []  # would be quite slow to search on fingerprint
+  readonly_fields = [
+    'created',
+    'last_modified',
+    'last_used',
+    'basekey_link',
+  ]
+
+  def basekey_link(self, obj):
+    url = reverse('admin:django_sshkey_key_change', args=(obj.basekey.id,))
+    return '<a href="%s">%s</a>' % (url, obj.basekey)
+  basekey_link.allow_tags = True
+
+class NamedKeyAdmin(ApplicationKeyAdmin):
+  search_fields = [
+    'name',
+  ]
+
+class UserKeyAdmin(NamedKeyAdmin):
+  list_display = [
+    '__unicode__',
+    'user',
+    'basekey',
+    'created',
+    'last_modified',
+    'last_used',
+  ]
+  search_fields = [
+    'name',
+    'user__username',
+  ]
+
+admin.site.register(Key, KeyAdmin)
 admin.site.register(UserKey, UserKeyAdmin)
