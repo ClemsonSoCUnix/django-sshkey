@@ -137,8 +137,12 @@ class ApplicationKey(models.Model):
 
 class NamedKey(ApplicationKey):
   name = models.CharField(max_length=50, blank=True)
+
   class Meta:
     abstract = True
+
+  def __unicode__(self):
+    return unicode(self.name)
 
   def clean(self):
     if not self.name:

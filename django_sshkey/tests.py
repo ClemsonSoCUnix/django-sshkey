@@ -289,6 +289,12 @@ class NamedKeyTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
+  def test_unicode(self):
+    key = TestNamedKey(basekey=self.key1)
+    key.full_clean()
+    key.save()
+    self.assertEqual(key.name, unicode(key))
+
 class UserKeyTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):
