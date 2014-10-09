@@ -31,7 +31,14 @@ from django_sshkey.models import Key, UserKey
 from django_sshkey.util import pubkey_parse
 
 class ApplicationKeyForm(forms.ModelForm):
-  key = forms.CharField(max_length=2000, required=True)
+  key = forms.CharField(
+    max_length=2000, required=True,
+    widget=forms.Textarea(attrs={
+      'cols': 72,
+      'rows': 15,
+      'placeholder': "Paste in the contents of your public key file here",
+    })
+  )
 
   def clean(self):
     cleaned_data = self.cleaned_data
@@ -66,11 +73,6 @@ class UserKeyForm(NamedKeyForm):
     fields = ['name', 'key']
     exclude = ['basekey']
     widgets = {
-      'key': forms.Textarea(attrs={
-        'cols': 72,
-        'rows': 15,
-        'placeholder': "Paste in the contents of your public key file here",
-      }),
       'name': forms.TextInput(attrs={
         'size': 50,
         'placeholder': "username@hostname, or leave blank to use key comment",
