@@ -230,6 +230,15 @@ class ApplicationKeyTestCase(BaseTestCase):
   def test_last_used_attribute(self):
     self.assertEqual(self.key1.last_used, self.app_key1.last_used)
 
+  def test_unicode1(self):
+    ''' No basekey '''
+    key = TestApplicationKey()
+    self.assertEqual('(no basekey)', unicode(key))
+
+  def test_unicode2(self):
+    ''' With basekey '''
+    self.assertEqual(unicode(self.key1), unicode(self.app_key1))
+
 class NamedKeyTestCase(BaseTestCase):
   @classmethod
   def setUpClass(cls):

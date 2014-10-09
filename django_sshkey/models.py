@@ -109,6 +109,12 @@ class ApplicationKey(models.Model):
   class Meta:
     abstract = True
 
+  def __unicode__(self):
+    try:
+      return unicode(self.basekey)
+    except Key.DoesNotExist:
+      return u'(no basekey)'
+
   @property
   def key(self):
     return self.basekey.key
