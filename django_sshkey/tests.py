@@ -29,6 +29,7 @@
 from django.test import TestCase
 from django.test.client import Client
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django_sshkey.forms import UserKeyForm
@@ -108,32 +109,24 @@ class KeyCreationTestCase(BaseTestCase):
 
   def test_private_key_fails(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key1_path).read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_invalid_key_fails(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = 'ssh-rsa invalid',
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_key_with_options_fails(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = 'command="foobar" ' + open(self.key1_path+'.pub').read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_multiple_keys_fails(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key1_path+'.pub').read() \
           + open(self.key2_path+'.pub').read(),
     )
@@ -142,41 +135,31 @@ class KeyCreationTestCase(BaseTestCase):
   def test_fingerprint(self):
     fingerprint = ssh_fingerprint(self.key1_path+'.pub')
     key = Key(
-      #user = self.user1,
-      #name = 'name',
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
-    key.save()
     self.assertEqual(key.fingerprint, fingerprint)
 
   def test_touch(self):
     import datetime
     key = Key(
-      #user = self.user1,
-      #name = 'name',
+      content_type = ContentType.objects.get_for_model(Key),  # to satisfy foreign key
       key = open(self.key1_path+'.pub').read(),
     )
     key.full_clean()
-    key.save()
     self.assertIsNone(key.last_used)
     key.touch()
-    key.save()
     self.assertIsInstance(key.last_used, datetime.datetime)
     key.touch()
 
   def test_blank_key_fails(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name1',
       key = '',
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_ws_key_fails(self):
     key = Key(
-      #user = self.user1,
-      #name = 'name1',
       key = '     ',
     )
     self.assertRaises(ValidationError, key.full_clean)
@@ -187,14 +170,12 @@ class KeyCreationTestCase(BaseTestCase):
       key = open(self.key1_path + '.pub').read()
     )
     key.full_clean()
-    key.save()
     self.assertEqual(key.fingerprint, unicode(key))
 
   def test_unicode2(self):
     '''Without fingerprint.'''
     contents = open(self.key1_path + '.pub').read()
     key = Key(key=contents)
-    key.save()
     self.assertEqual(contents[:20] + '...', unicode(key))
 
 class ApplicationKeyTestCase(BaseTestCase):
@@ -204,7 +185,7 @@ class ApplicationKeyTestCase(BaseTestCase):
     # key1 has a comment
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(comment='comment', file=cls.key1_path)
-    cls.key1 = Key(key=open(cls.key1_path + '.pub').read())
+    cls.key1 = TestApplicationKey.base(key=open(cls.key1_path + '.pub').read())
     cls.key1.full_clean()
     cls.key1.save()
     cls.app_key1 = TestApplicationKey(basekey=cls.key1)
@@ -515,7 +496,7 @@ class KeyLookupTestCase(BaseTestCase):
     def generate_key(name, user):
       path = os.path.join(cls.key_dir, name)
       ssh_keygen(file=path)
-      key = Key(key=open(path + '.pub').read())
+      key = UserKey.base(key=open(path + '.pub').read())
       key.full_clean()
       key.save()
       userkey = UserKey(basekey=key, name=name, user=user)
