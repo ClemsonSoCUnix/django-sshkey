@@ -26,23 +26,16 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf import settings
+from django_sshkey.models import UserKey
+from django_sshkey import settings
 
-SSHKEY_AUTHORIZED_KEYS_OPTIONS = getattr(settings, 'SSHKEY_AUTHORIZED_KEYS_OPTIONS', None)
-SSHKEY_ALLOW_EDIT = getattr(settings, 'SSHKEY_ALLOW_EDIT', False)
-SSHKEY_EMAIL_ADD_KEY = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY', True)
-SSHKEY_EMAIL_ADD_KEY_SUBJECT = getattr(settings, 'SSHKEY_EMAIL_ADD_KEY_SUBJECT',
-  "A new public key was added to your account"
-)
-SSHKEY_FROM_EMAIL = getattr(settings, 'SSHKEY_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)
-SSHKEY_SEND_HTML_EMAIL = getattr(settings, 'SSHKEY_SEND_HTML_EMAIL', False)
-
-SSHKEY_KEY_FORMATTERS = getattr(settings, 'SSHKEY_KEY_FORMATTERS', {})
-SSHKEY_KEY_FORMATTERS.setdefault('django_sshkey.userkey', 'django_sshkey.defaults.userkey_formatter')
-
-def get_formatter(key):
-  module_name, object_name = SSHKEY_KEY_FORMATTERS[key].rsplit('.', 1)
-  obj = __import__(module_name)
-  for p in module_name.split('.')[1:]:
-    obj = getattr(obj, p)
-  return getattr(obj, object_name)
+def userkey_formatter(key):
+  userkey = UserKey.objects.select_related('user').get(basekey=key) 
+  if settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS:
+    options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS.format(
+      username=userkey.user.username,
+      key_id=key.id,
+    ) + ' '
+  else:
+    options = ''
+  return options + key.key

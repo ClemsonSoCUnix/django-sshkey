@@ -37,7 +37,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
 from django_sshkey import settings
-from django_sshkey.models import UserKey
+from django_sshkey.models import UserKey, Key
 from django_sshkey.forms import UserKeyForm
 
 @require_http_methods(['GET', 'POST'])
@@ -45,28 +45,28 @@ from django_sshkey.forms import UserKeyForm
 def lookup(request):
   if request.method == 'POST':
     payload = request.read()
-    key = UserKey.objects.get(id=int(payload))
+    key = Key.objects.get(id=int(payload))
     key.touch()
     return HttpResponse(str(key.last_used), content_type='text/plain')
   try:
     fingerprint = request.GET['fingerprint']
-    keys = UserKey.objects.filter(basekey__fingerprint=fingerprint)
+    keys = Key.objects.filter(fingerprint=fingerprint)
   except KeyError:
     try:
       username = request.GET['username']
-      keys = UserKey.objects.filter(user__username=username)
+      keys = Key.objects.filter(
+        content_type__app_label='django_sshkey',
+        content_type__model='userkey',
+        userkey__user__username=username
+      )
     except KeyError:
-      keys = UserKey.objects.iterator()
+      keys = Key.objects.iterator()
   response = ''
   for key in keys:
-    if settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS:
-      options = settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS.format(
-        username=key.user.username,
-        key_id=key.id,
-      ) + ' '
-    else:
-      options = ''
-    response += options + key.key + '\n'
+    content_type = key.content_type
+    formatter_key = '%s.%s' % (content_type.app_label, content_type.model)
+    formatter = settings.get_formatter(formatter_key)
+    response += formatter(key) + '\n'
   return HttpResponse(response, content_type='text/plain')
 
 @login_required
