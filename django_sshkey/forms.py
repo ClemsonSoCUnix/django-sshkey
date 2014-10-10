@@ -42,8 +42,9 @@ class ApplicationKeyForm(forms.ModelForm):
   )
 
   def clean_key(self):
+    opts = self._meta
     key = self.cleaned_data['key']
-    key = Key(key=key)
+    key = opts.model.base(key=key)
     key.full_clean()
     return key
 
