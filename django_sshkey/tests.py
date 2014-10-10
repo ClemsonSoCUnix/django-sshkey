@@ -371,7 +371,7 @@ class UserKeyTestCase(BaseTestCase):
     self.assertRaises(ValidationError, key2.full_clean)
 
   def test_delete(self):
-    basekey = Key(key=open(self.key3_path + '.pub').read())
+    basekey = UserKey.base(key=open(self.key3_path + '.pub').read())
     basekey.full_clean()
     basekey.save()
     pk = basekey.pk
