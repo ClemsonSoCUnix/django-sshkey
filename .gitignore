@@ -1,3 +1,4 @@
 *.py[coa]
 /django_sshkey.egg-info
 /testproject/test.db
+.tox
