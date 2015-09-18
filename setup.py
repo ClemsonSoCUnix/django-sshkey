@@ -44,7 +44,7 @@ setup(
   license='BSD',
   description='Associates multiple SSH public keys with Django user accounts.',
   long_description=README,
-  url='https://bitbucket.org/ClemsonSoCUnix/django-sshkey',
+  url='https://github.com/ClemsonSoCUnix/django-sshkey',
   author='Scott Duckworth',
   author_email='sduckwo@clemson.edu',
   classifiers=[
