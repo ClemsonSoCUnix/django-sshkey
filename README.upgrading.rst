@@ -1,12 +1,9 @@
 Upgrading and Downgrading
 =========================
 
-django-sshkey is equipped with South_ migrations.  This makes changes to the
-database schema in upgrades or downgrades a simple process.  Migrations will
-only be present on minor version changes.
-
-To use South migrations, you must have the south app in your project's
-``INSTALLED_APPS``.
+From django-sshkey 1.1 to 2.3, South_ migrations were provided. Starting with
+2.4, South support was discontinued in favor of the Django native migration
+system.
 
 The following table maps django-sshkey version to migration labels:
 
@@ -21,6 +18,8 @@ The following table maps django-sshkey version to migration labels:
 +---------+---------------+-------+------------------------------------------+
 | 2.3     | django_sshkey | 0002  |                                          |
 +---------+---------------+-------+------------------------------------------+
+| 2.4     | django_sshkey | 0001  | Django native migrations started.        |
++---------+---------------+-------+------------------------------------------+
 
 To upgrade, install the new version of django-sshkey and then migrate your
 project to its corresponding label from the table above using the following
@@ -30,6 +29,23 @@ command::
 
 To downgrade, perform the migration down to the label of the desired version
 before installing the older django-sshkey.
+
+Upgrading from <=2.3.x to 2.4.x
+-------------------------------
+
+Starting with django-sshkey 2.4, South support is discontinued in favor of
+Django's native migration system. The preferred upgrade path for pre-2.4
+installations of django-sshkey is:
+
+1. Upgrade to South 1.0+.
+2. Upgrade to django-sshkey 2.3 using the South migrations.
+3. Remove south from your ``INSTALLED_APPS``.
+4. Upgrade to Django 1.7+ and django-sshkey 2.4+.
+5. Run ``python manage.py migrate --fake-initial``.
+
+You may also read Django's instructions on `upgrading from south`_.
+
+.. _`upgrading from south`: https://docs.djangoproject.com/en/dev/topics/migrations/#upgrading-from-south
 
 Upgrading from 1.1.x to 2.x
 ---------------------------

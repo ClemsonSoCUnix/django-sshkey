@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Clemson University
+# Copyright (c) 2014-2015, Clemson University
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,4 +26,4 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = '2.3.2'
+__version__ = '2.4.0'

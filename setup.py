@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Clemson University
+# Copyright (c) 2014-2015, Clemson University
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,9 +44,10 @@ setup(
   license='BSD',
   description='Associates multiple SSH public keys with Django user accounts.',
   long_description=README,
-  url='https://bitbucket.org/ClemsonSoCUnix/django-sshkey',
+  url='https://github.com/ClemsonSoCUnix/django-sshkey',
   author='Scott Duckworth',
   author_email='sduckwo@clemson.edu',
+  zip_safe=False,
   classifiers=[
     'Environment :: Web Environment',
     'Framework :: Django',
