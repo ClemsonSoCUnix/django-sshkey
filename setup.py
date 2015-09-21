@@ -47,6 +47,7 @@ setup(
   url='https://github.com/ClemsonSoCUnix/django-sshkey',
   author='Scott Duckworth',
   author_email='sduckwo@clemson.edu',
+  zip_safe=False,
   classifiers=[
     'Environment :: Web Environment',
     'Framework :: Django',
