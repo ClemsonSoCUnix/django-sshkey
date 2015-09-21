@@ -2,6 +2,12 @@
 Release Notes for django-sshkey
 ===============================
 
+2.4.0 (2015-09-21)
+------------------
+
+* Support Django 1.4 through Django 1.8.
+* Discontinued South migrations in favor of Django native migration system.
+
 2.3.2 (2014-09-15)
 ------------------
 
