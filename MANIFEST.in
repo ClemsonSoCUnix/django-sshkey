@@ -9,4 +9,5 @@ include django-sshkey-lookup-all
 include django-sshkey-lookup-by-username
 include django-sshkey-lookup-by-fingerprint
 recursive-include django_sshkey/migrations *.py
+recursive-include django_sshkey/south_migrations *.py
 recursive-include django_sshkey/templates.example *
