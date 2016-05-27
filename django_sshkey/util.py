@@ -74,14 +74,17 @@ class PublicKey(object):
   def __init__(self, b64key, comment=None):
     self.b64key = b64key
     self.comment = comment
-    keydata = base64.b64decode(b64key.encode('ascii'))
+    try:
+      keydata = base64.b64decode(b64key.encode('ascii'))
+    except binascii.Error as e:  # Python 3 raises this instead of TypeError
+      raise TypeError(str(e))
     self.keydata = keydata
     self.parts = []
     while keydata:
       dlen = struct.unpack('>I', keydata[:4])[0]
       data, keydata = keydata[4:4+dlen], keydata[4+dlen:]
       self.parts.append(data)
-    self.algorithm = self.parts[0]
+    self.algorithm = self.parts[0].decode('ascii')
 
   def fingerprint(self):
     import hashlib
@@ -116,7 +119,7 @@ class PublicKey(object):
     der = der_encoder.encode(pkcs1_seq)
     out = (
       '-----BEGIN RSA PUBLIC KEY-----\n' +
-      wrap(base64.b64encode(der), 64) + '\n' +
+      wrap(base64.b64encode(der).decode('ascii'), 64) + '\n' +
       '-----END RSA PUBLIC KEY-----'
     )
     return out
