@@ -1,4 +1,6 @@
 language: python
+python:
+  - '3.5'
 env:
   - TOX_ENV=django14
   - TOX_ENV=django16
@@ -9,6 +11,6 @@ env:
   - TOX_ENV=py34
   - TOX_ENV=py35
 install:
-  - pip install tox
+  - travis_retry pip install "virtualenv<14.0.0" "tox>=1.9"
 script:
   - tox -e $TOX_ENV
