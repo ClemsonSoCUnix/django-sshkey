@@ -1,15 +1,14 @@
 language: python
-python:
-  - '3.5'
 env:
   - TOX_ENV=django14
   - TOX_ENV=django16
   - TOX_ENV=django17
   - TOX_ENV=django18
-  - TOX_ENV=py32
   - TOX_ENV=py33
   - TOX_ENV=py34
   - TOX_ENV=py35
+#  - TOX_ENV=py32  # XXX Django ends support in 2016
+#  - TOX_ENV=py35  # XXX Not supported travis-ci/travis-ci#4794
 install:
   - travis_retry pip install "virtualenv<14.0.0" "tox>=1.9"
 script:
