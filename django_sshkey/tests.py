@@ -27,7 +27,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.test import TestCase
-from django.test.client import Client
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
@@ -65,7 +64,11 @@ def ssh_fingerprint(pubkey_path):
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
   stdout, stderr = p.communicate()
   fingerprint = stdout.split(None, 2)[1]
-  return fingerprint
+  return fingerprint.decode('ascii')
+
+def read_pubkey(path):
+  '''Read an OpenSSH formatted public key'''
+  return open(path).read().strip()
 
 class BaseTestCase(TestCase):
   @classmethod
@@ -422,82 +425,55 @@ class UserKeyLookupTestCase(BaseTestCase):
     User.objects.all().delete()
     super(UserKeyLookupTestCase, cls).tearDownClass()
 
-  def test_lookup_all(self):
-    client = Client()
-    url = reverse('django_sshkey.views.lookup')
-    response = client.get(url)
+  def assertHasKeys(self, response, keys):
     self.assertEqual(response.status_code, 200)
     self.assertIn('Content-Type', response)
     self.assertEqual(response['Content-Type'], 'text/plain')
-    actual_content = set(response.content.strip().split('\n'))
-    correct_content = set((
-      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
-      'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
-      'command="user2 %s" %s' % (self.key3.id, open(self.key3_path + '.pub').read().strip()),
-    ))
-    self.assertEqual(actual_content, correct_content)
+    content = response.content.decode('ascii')
+    actual = set(content.strip().splitlines())
+    expected = set(keys)
+    self.assertEqual(actual, expected)
+
+  def test_lookup_all(self):
+    url = reverse('django_sshkey.views.lookup')
+    response = self.client.get(url)
+    self.assertHasKeys(response, [
+      'command="user1 %s" %s' % (self.key1.id, read_pubkey(self.key1_path + '.pub')),
+      'command="user1 %s" %s' % (self.key2.id, read_pubkey(self.key2_path + '.pub')),
+      'command="user2 %s" %s' % (self.key3.id, read_pubkey(self.key3_path + '.pub')),
+    ])
 
   def test_lookup_by_fingerprint(self):
-    client = Client()
     url = reverse('django_sshkey.views.lookup')
     fingerprint = ssh_fingerprint(self.key1_path+'.pub')
-    response = client.get(url, {'fingerprint': fingerprint})
-    self.assertEqual(response.status_code, 200)
-    self.assertIn('Content-Type', response)
-    self.assertEqual(response['Content-Type'], 'text/plain')
-    username = self.user1.username
-    actual_content = set(response.content.strip().split('\n'))
-    correct_content = set((
-      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
-    ))
-    self.assertEqual(actual_content, correct_content)
+    response = self.client.get(url, {'fingerprint': fingerprint})
+    self.assertHasKeys(response, [
+      'command="user1 %s" %s' % (self.key1.id, read_pubkey(self.key1_path + '.pub')),
+    ])
 
   def test_lookup_by_username_single_result(self):
-    client = Client()
     url = reverse('django_sshkey.views.lookup')
     username = self.user2.username
-    response = client.get(url, {'username': username})
-    self.assertEqual(response.status_code, 200)
-    self.assertIn('Content-Type', response)
-    self.assertEqual(response['Content-Type'], 'text/plain')
-    body = open(self.key1_path + '.pub').read().strip()
-    actual_content = set(response.content.strip().split('\n'))
-    correct_content = set((
-      'command="user2 %s" %s' % (self.key3.id, open(self.key3_path + '.pub').read().strip()),
-    ))
-    self.assertEqual(actual_content, correct_content)
+    response = self.client.get(url, {'username': username})
+    self.assertHasKeys(response, [
+      'command="user2 %s" %s' % (self.key3.id, read_pubkey(self.key3_path + '.pub')),
+    ])
 
   def test_lookup_by_username_multiple_results(self):
-    client = Client()
     url = reverse('django_sshkey.views.lookup')
-    username = self.user1.username
-    response = client.get(url, {'username': username})
-    self.assertEqual(response.status_code, 200)
-    self.assertIn('Content-Type', response)
-    self.assertEqual(response['Content-Type'], 'text/plain')
-    body = open(self.key1_path + '.pub').read().strip()
-    actual_content = set(response.content.strip().split('\n'))
-    correct_content = set((
+    response = self.client.get(url, {'username': self.user1.username})
+    self.assertHasKeys(response, [
       'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
       'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
-    ))
-    self.assertEqual(actual_content, correct_content)
+    ])
 
   def test_lookup_nonexist_fingerprint(self):
-    client = Client()
     url = reverse('django_sshkey.views.lookup')
     fingerprint = ssh_fingerprint(self.key4_path+'.pub')
-    response = client.get(url, {'fingerprint': fingerprint})
-    self.assertEqual(response.status_code, 200)
-    self.assertIn('Content-Type', response)
-    self.assertEqual(response['Content-Type'], 'text/plain')
-    self.assertEqual(response.content, '')
+    response = self.client.get(url, {'fingerprint': fingerprint})
+    self.assertHasKeys(response, [])
 
   def test_lookup_nonexist_username(self):
-    client = Client()
     url = reverse('django_sshkey.views.lookup')
-    response = client.get(url, {'username': 'batman'})
-    self.assertEqual(response.status_code, 200)
-    self.assertIn('Content-Type', response)
-    self.assertEqual(response['Content-Type'], 'text/plain')
-    self.assertEqual(response.content, '')
+    response = self.client.get(url, {'username': 'batman'})
+    self.assertHasKeys(response, [])
