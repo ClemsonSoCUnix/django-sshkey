@@ -39,6 +39,20 @@ import subprocess
 import tempfile
 
 
+def ssh_version(ssh='ssh'):
+    cmd = [ssh, '-V']
+    try:
+        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        raise RuntimeError('OpenSSH is required to run the testing suite.')
+    out = out.decode('ascii')
+    out = out.split()[0]
+    out = out.split('_')[1].rstrip(',')
+    major, minor = out.split('.', 1)
+    minor, patch = minor.split('p')
+    return (major, minor, patch)
+
+
 def ssh_keygen(type=None, passphrase='', comment=None, file=None):
   cmd = ['ssh-keygen', '-q']
   if type is not None:
@@ -64,17 +78,37 @@ def ssh_key_import(input_path, output_path, format='RFC4716'):
     subprocess.check_call(cmd, stdout=f)
 
 
-def ssh_fingerprint(pubkey_path):
+def ssh_fingerprint(pubkey_path, hash=None):
   cmd = ['ssh-keygen', '-lf', pubkey_path]
+
+  # Legacy mode ensures the fingeprint is always a non-prefixed MD5 hash of the
+  # key, regardless of which version of OpenSSH is installed.
+  legacy = hash == 'legacy'
+  if legacy and SSH_VERSION < ('6', '8'):
+    hash = None
+  elif legacy:
+    hash = 'md5'
+  if hash is not None:
+    cmd.extend(['-E', hash])
+
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
   stdout, stderr = p.communicate()
   fingerprint = stdout.split(None, 2)[1]
-  return fingerprint.decode('ascii')
+  fingerprint = fingerprint.decode('ascii')
+
+  # Strip off the prefix in legacy mode if found.
+  if legacy and fingerprint.startswith('MD5:'):
+    fingerprint = fingerprint[len('MD5:'):]
+
+  return fingerprint
 
 
 def read_pubkey(path):
   '''Read an OpenSSH formatted public key'''
   return open(path).read().strip()
+
+
+SSH_VERSION = ssh_version()
 
 
 class BaseTestCase(TestCase):
@@ -180,7 +214,7 @@ class UserKeyCreationTestCase(BaseTestCase):
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_fingerprint(self):
-    fingerprint = ssh_fingerprint(self.key1_path + '.pub')
+    fingerprint = ssh_fingerprint(self.key1_path + '.pub', hash='legacy')
     key = UserKey(
       user=self.user1,
       name='name',
@@ -431,9 +465,6 @@ class UserKeyLookupTestCase(BaseTestCase):
     cls.key3.full_clean()
     cls.key3.save()
 
-    cls.key4_path = os.path.join(cls.key_dir, 'key4')
-    ssh_keygen(file=cls.key4_path)
-
   @classmethod
   def tearDownClass(cls):
     settings.SSHKEY_AUTHORIZED_KEYS_OPTIONS = cls.original_options
@@ -469,7 +500,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_by_fingerprint(self):
     url = reverse('django_sshkey.views.lookup')
-    fingerprint = ssh_fingerprint(self.key1_path + '.pub')
+    fingerprint = ssh_fingerprint(self.key1_path + '.pub', hash='legacy')
     response = self.client.get(url, {'fingerprint': fingerprint})
     self.assertHasKeys(response, [
       'command="user1 %s" %s' % (
@@ -505,7 +536,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_nonexist_fingerprint(self):
     url = reverse('django_sshkey.views.lookup')
-    fingerprint = ssh_fingerprint(self.key4_path + '.pub')
+    fingerprint = ':'.join(['ff'] * 16)
     response = self.client.get(url, {'fingerprint': fingerprint})
     self.assertHasKeys(response, [])
 
