@@ -1,9 +1,8 @@
 language: python
 env:
-  - TOX_ENV=django14
   - TOX_ENV=django16
-  - TOX_ENV=django17
   - TOX_ENV=django18
+  - TOX_ENV=django19
   - TOX_ENV=py33
   - TOX_ENV=py34
 #  - TOX_ENV=py32  # XXX Django ends support in 2016
