@@ -17,14 +17,15 @@
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 import os
 from setuptools import setup
@@ -38,7 +39,7 @@ exec(open('django_sshkey/__init__.py').read())
 
 setup(
   name='django-sshkey',
-  version=__version__,
+  version=__version__,  # noqa
   packages=['django_sshkey'],
   include_package_data=True,
   license='BSD',
@@ -71,11 +72,13 @@ setup(
     'console_scripts': [
       'django-sshkey-pylookup = django_sshkey.util:lookup_main',
       'django-sshkey-pylookup-all = django_sshkey.util:lookup_all_main',
-      'django-sshkey-pylookup-by-username = django_sshkey.util:lookup_by_username_main',
-      'django-sshkey-pylookup-by-fingerprint = django_sshkey.util:lookup_by_fingerprint_main',
+      'django-sshkey-pylookup-by-username = '
+        'django_sshkey.util:lookup_by_username_main',
+      'django-sshkey-pylookup-by-fingerprint = '
+        'django_sshkey.util:lookup_by_fingerprint_main',
     ],
   },
-  install_requires = [
+  install_requires=[
     'pyasn1',
   ],
 )

@@ -17,14 +17,15 @@
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.decorators.http import require_http_methods, require_GET
@@ -39,6 +40,7 @@ from django.utils.http import is_safe_url
 from django_sshkey import settings
 from django_sshkey.models import UserKey
 from django_sshkey.forms import UserKeyForm
+
 
 @require_http_methods(['GET', 'POST'])
 @csrf_exempt
@@ -69,15 +71,17 @@ def lookup(request):
     response += options + key.key + '\n'
   return HttpResponse(response, content_type='text/plain')
 
+
 @login_required
 @require_GET
 def userkey_list(request):
   userkey_list = UserKey.objects.filter(user=request.user)
   return render_to_response(
     'sshkey/userkey_list.html',
-    { 'userkey_list': userkey_list, 'allow_edit': settings.SSHKEY_ALLOW_EDIT },
-    context_instance = RequestContext(request),
+    {'userkey_list': userkey_list, 'allow_edit': settings.SSHKEY_ALLOW_EDIT},
+    context_instance=RequestContext(request),
   )
+
 
 @login_required
 @require_http_methods(['GET', 'POST'])
@@ -99,9 +103,10 @@ def userkey_add(request):
     form = UserKeyForm()
   return render_to_response(
     'sshkey/userkey_detail.html',
-    { 'form': form, 'action': 'add' },
-    context_instance = RequestContext(request),
+    {'form': form, 'action': 'add'},
+    context_instance=RequestContext(request),
   )
+
 
 @login_required
 @require_http_methods(['GET', 'POST'])
@@ -126,9 +131,10 @@ def userkey_edit(request, pk):
     form = UserKeyForm(instance=userkey)
   return render_to_response(
     'sshkey/userkey_detail.html',
-    { 'form': form, 'action': 'edit' },
-    context_instance = RequestContext(request),
+    {'form': form, 'action': 'edit'},
+    context_instance=RequestContext(request),
   )
+
 
 @login_required
 @require_GET

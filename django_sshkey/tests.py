@@ -17,14 +17,15 @@
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 from django.test import TestCase
 from django.contrib.auth.models import User
@@ -36,6 +37,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+
 
 def ssh_keygen(type=None, passphrase='', comment=None, file=None):
   cmd = ['ssh-keygen', '-q']
@@ -49,15 +51,18 @@ def ssh_keygen(type=None, passphrase='', comment=None, file=None):
     cmd += ['-f', file]
   subprocess.check_call(cmd)
 
+
 def ssh_key_export(input_path, output_path, format='RFC4716'):
   cmd = ['ssh-keygen', '-e', '-m', format, '-f', input_path]
   with open(output_path, 'wb') as f:
     subprocess.check_call(cmd, stdout=f)
 
+
 def ssh_key_import(input_path, output_path, format='RFC4716'):
   cmd = ['ssh-keygen', '-i', '-m', format, '-f', input_path]
   with open(output_path, 'wb') as f:
     subprocess.check_call(cmd, stdout=f)
+
 
 def ssh_fingerprint(pubkey_path):
   cmd = ['ssh-keygen', '-lf', pubkey_path]
@@ -66,9 +71,11 @@ def ssh_fingerprint(pubkey_path):
   fingerprint = stdout.split(None, 2)[1]
   return fingerprint.decode('ascii')
 
+
 def read_pubkey(path):
   '''Read an OpenSSH formatted public key'''
   return open(path).read().strip()
+
 
 class BaseTestCase(TestCase):
   @classmethod
@@ -80,6 +87,7 @@ class BaseTestCase(TestCase):
     if cls.key_dir:
       shutil.rmtree(cls.key_dir)
       cls.key_dir = None
+
 
 class UserKeyCreationTestCase(BaseTestCase):
   @classmethod
@@ -104,9 +112,9 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_with_name_with_comment(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -114,9 +122,9 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_with_name_without_comment(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key2_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key2_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -124,8 +132,8 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_without_name_with_comment(self):
     key = UserKey(
-      user = self.user1,
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      key=open(self.key1_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -133,50 +141,50 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_without_name_without_comment_fails(self):
     key = UserKey(
-      user = self.user1,
-      key = open(self.key2_path+'.pub').read(),
+      user=self.user1,
+      key=open(self.key2_path + '.pub').read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_private_key_fails(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path).read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path).read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_invalid_key_fails(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = 'ssh-rsa invalid',
+      user=self.user1,
+      name='name',
+      key='ssh-rsa invalid',
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_key_with_options_fails(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = 'command="foobar" ' + open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key='command="foobar" ' + open(self.key1_path + '.pub').read(),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_multiple_keys_fails(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read() \
-          + open(self.key2_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=(open(self.key1_path + '.pub').read() +
+           open(self.key2_path + '.pub').read()),
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_fingerprint(self):
-    fingerprint = ssh_fingerprint(self.key1_path+'.pub')
+    fingerprint = ssh_fingerprint(self.key1_path + '.pub')
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -185,9 +193,9 @@ class UserKeyCreationTestCase(BaseTestCase):
   def test_touch(self):
     import datetime
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -199,78 +207,78 @@ class UserKeyCreationTestCase(BaseTestCase):
 
   def test_same_name_same_user(self):
     key1 = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key2_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key2_path + '.pub').read(),
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
   def test_same_name_different_user(self):
     key1 = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
-      user = self.user2,
-      name = 'name',
-      key = open(self.key2_path+'.pub').read(),
+      user=self.user2,
+      name='name',
+      key=open(self.key2_path + '.pub').read(),
     )
     key2.full_clean()
     key2.save()
 
   def test_same_key_same_user(self):
     key1 = UserKey(
-      user = self.user1,
-      name = 'name1',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name1',
+      key=open(self.key1_path + '.pub').read(),
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
-      user = self.user1,
-      name = 'name2',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name2',
+      key=open(self.key1_path + '.pub').read(),
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
   def test_same_key_different_user(self):
     key1 = UserKey(
-      user = self.user1,
-      name = 'name1',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name1',
+      key=open(self.key1_path + '.pub').read(),
     )
     key1.full_clean()
     key1.save()
     key2 = UserKey(
-      user = self.user2,
-      name = 'name2',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user2,
+      name='name2',
+      key=open(self.key1_path + '.pub').read(),
     )
     self.assertRaises(ValidationError, key2.full_clean)
 
   def test_blank_key_fails(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name1',
-      key = '',
+      user=self.user1,
+      name='name1',
+      key='',
     )
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_ws_key_fails(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name1',
-      key = '     ',
+      user=self.user1,
+      name='name1',
+      key='     ',
     )
     self.assertRaises(ValidationError, key.full_clean)
 
@@ -301,29 +309,31 @@ class RFC4716TestCase(BaseTestCase):
 
   def test_import_with_comment(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_rfc4716_path).read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_rfc4716_path).read(),
     )
     key.full_clean()
     key.save()
-    self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+    self.assertEqual(key.key.split()[:2],
+                     open(self.key1_path + '.pub').read().split()[:2])
 
   def test_import_without_comment(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key2_rfc4716_path).read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key2_rfc4716_path).read(),
     )
     key.full_clean()
     key.save()
-    self.assertEqual(key.key.split()[:2], open(self.key2_path+'.pub').read().split()[:2])
+    self.assertEqual(key.key.split()[:2],
+                     open(self.key2_path + '.pub').read().split()[:2])
 
   def test_export(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -332,7 +342,9 @@ class RFC4716TestCase(BaseTestCase):
     with open(export_path, 'w') as f:
       f.write(key.export('RFC4716'))
     ssh_key_import(export_path, import_path, 'RFC4716')
-    self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+    self.assertEqual(open(import_path).read().split()[:2],
+                     open(self.key1_path + '.pub').read().split()[:2])
+
 
 class PemTestCase(BaseTestCase):
   @classmethod
@@ -354,19 +366,20 @@ class PemTestCase(BaseTestCase):
 
   def test_import(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_pem_path).read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_pem_path).read(),
     )
     key.full_clean()
     key.save()
-    self.assertEqual(key.key.split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+    self.assertEqual(key.key.split()[:2],
+                     open(self.key1_path + '.pub').read().split()[:2])
 
   def test_export(self):
     key = UserKey(
-      user = self.user1,
-      name = 'name',
-      key = open(self.key1_path+'.pub').read(),
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
     )
     key.full_clean()
     key.save()
@@ -375,7 +388,9 @@ class PemTestCase(BaseTestCase):
     with open(export_path, 'w') as f:
       f.write(key.export('PEM'))
     ssh_key_import(export_path, import_path, 'PEM')
-    self.assertEqual(open(import_path).read().split()[:2], open(self.key1_path+'.pub').read().split()[:2])
+    self.assertEqual(open(import_path).read().split()[:2],
+                     open(self.key1_path + '.pub').read().split()[:2])
+
 
 class UserKeyLookupTestCase(BaseTestCase):
   @classmethod
@@ -389,9 +404,9 @@ class UserKeyLookupTestCase(BaseTestCase):
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(file=cls.key1_path)
     cls.key1 = UserKey(
-      user = cls.user1,
-      name = 'key1',
-      key = open(cls.key1_path+'.pub').read(),
+      user=cls.user1,
+      name='key1',
+      key=open(cls.key1_path + '.pub').read(),
     )
     cls.key1.full_clean()
     cls.key1.save()
@@ -399,9 +414,9 @@ class UserKeyLookupTestCase(BaseTestCase):
     cls.key2_path = os.path.join(cls.key_dir, 'key2')
     ssh_keygen(file=cls.key2_path)
     cls.key2 = UserKey(
-      user = cls.user1,
-      name = 'key2',
-      key = open(cls.key2_path+'.pub').read(),
+      user=cls.user1,
+      name='key2',
+      key=open(cls.key2_path + '.pub').read(),
     )
     cls.key2.full_clean()
     cls.key2.save()
@@ -409,9 +424,9 @@ class UserKeyLookupTestCase(BaseTestCase):
     cls.key3_path = os.path.join(cls.key_dir, 'key3')
     ssh_keygen(file=cls.key3_path)
     cls.key3 = UserKey(
-      user = cls.user2,
-      name = 'key3',
-      key = open(cls.key3_path+'.pub').read(),
+      user=cls.user2,
+      name='key3',
+      key=open(cls.key3_path + '.pub').read(),
     )
     cls.key3.full_clean()
     cls.key3.save()
@@ -438,17 +453,29 @@ class UserKeyLookupTestCase(BaseTestCase):
     url = reverse('django_sshkey.views.lookup')
     response = self.client.get(url)
     self.assertHasKeys(response, [
-      'command="user1 %s" %s' % (self.key1.id, read_pubkey(self.key1_path + '.pub')),
-      'command="user1 %s" %s' % (self.key2.id, read_pubkey(self.key2_path + '.pub')),
-      'command="user2 %s" %s' % (self.key3.id, read_pubkey(self.key3_path + '.pub')),
+      'command="user1 %s" %s' % (
+        self.key1.id,
+        read_pubkey(self.key1_path + '.pub')
+      ),
+      'command="user1 %s" %s' % (
+        self.key2.id,
+        read_pubkey(self.key2_path + '.pub')
+      ),
+      'command="user2 %s" %s' % (
+        self.key3.id,
+        read_pubkey(self.key3_path + '.pub')
+      ),
     ])
 
   def test_lookup_by_fingerprint(self):
     url = reverse('django_sshkey.views.lookup')
-    fingerprint = ssh_fingerprint(self.key1_path+'.pub')
+    fingerprint = ssh_fingerprint(self.key1_path + '.pub')
     response = self.client.get(url, {'fingerprint': fingerprint})
     self.assertHasKeys(response, [
-      'command="user1 %s" %s' % (self.key1.id, read_pubkey(self.key1_path + '.pub')),
+      'command="user1 %s" %s' % (
+        self.key1.id,
+        read_pubkey(self.key1_path + '.pub')
+      ),
     ])
 
   def test_lookup_by_username_single_result(self):
@@ -456,20 +483,29 @@ class UserKeyLookupTestCase(BaseTestCase):
     username = self.user2.username
     response = self.client.get(url, {'username': username})
     self.assertHasKeys(response, [
-      'command="user2 %s" %s' % (self.key3.id, read_pubkey(self.key3_path + '.pub')),
+      'command="user2 %s" %s' % (
+        self.key3.id,
+        read_pubkey(self.key3_path + '.pub')
+      ),
     ])
 
   def test_lookup_by_username_multiple_results(self):
     url = reverse('django_sshkey.views.lookup')
     response = self.client.get(url, {'username': self.user1.username})
     self.assertHasKeys(response, [
-      'command="user1 %s" %s' % (self.key1.id, open(self.key1_path + '.pub').read().strip()),
-      'command="user1 %s" %s' % (self.key2.id, open(self.key2_path + '.pub').read().strip()),
+      'command="user1 %s" %s' % (
+        self.key1.id,
+        open(self.key1_path + '.pub').read().strip()
+      ),
+      'command="user1 %s" %s' % (
+        self.key2.id,
+        open(self.key2_path + '.pub').read().strip()
+      ),
     ])
 
   def test_lookup_nonexist_fingerprint(self):
     url = reverse('django_sshkey.views.lookup')
-    fingerprint = ssh_fingerprint(self.key4_path+'.pub')
+    fingerprint = ssh_fingerprint(self.key4_path + '.pub')
     response = self.client.get(url, {'fingerprint': fingerprint})
     self.assertHasKeys(response, [])
 
