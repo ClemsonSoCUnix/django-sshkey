@@ -5,6 +5,7 @@ env:
   - TOX_ENV=django19
   - TOX_ENV=py33
   - TOX_ENV=py34
+  - TOX_ENV=flake8
 #  - TOX_ENV=py32  # XXX Django ends support in 2016
 #  - TOX_ENV=py35  # XXX Not supported travis-ci/travis-ci#4794
 install:
