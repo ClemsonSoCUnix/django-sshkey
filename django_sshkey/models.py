@@ -17,14 +17,15 @@
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -38,6 +39,7 @@ except ImportError:
   now = datetime.datetime.now
 from django_sshkey.util import PublicKeyParseError, pubkey_parse
 from django_sshkey import settings
+
 
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
@@ -116,6 +118,7 @@ class UserKey(models.Model):
     self.last_used = now()
     self.save(update_last_modified=False)
 
+
 @receiver(pre_save, sender=UserKey)
 def send_email_add_key(sender, instance, **kwargs):
   if not settings.SSHKEY_EMAIL_ADD_KEY or instance.pk:
@@ -130,7 +133,8 @@ def send_email_add_key(sender, instance, **kwargs):
   request = getattr(instance, 'request', None)
   if request:
     context_dict['request'] = request
-    context_dict['userkey_list_uri'] = request.build_absolute_uri(reverse('django_sshkey.views.userkey_list'))
+    context_dict['userkey_list_uri'] = request.build_absolute_uri(
+      reverse('django_sshkey.views.userkey_list'))
   text_content = render_to_string('sshkey/add_key.txt', context_dict)
   msg = EmailMultiAlternatives(
     settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
