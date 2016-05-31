@@ -41,20 +41,20 @@ from unittest import skipIf
 
 
 def ssh_version_name(ssh='ssh'):
-    cmd = [ssh, '-V']
-    try:
-        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
-        raise RuntimeError('OpenSSH is required to run the testing suite.')
-    out = out.decode('ascii')
-    out = out.split()[0]
-    return out.split('_')[1].rstrip(',')
+  cmd = [ssh, '-V']
+  try:
+    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+  except subprocess.CalledProcessError:
+    raise RuntimeError('OpenSSH is required to run the testing suite.')
+  out = out.decode('ascii')
+  out = out.split()[0]
+  return out.split('_')[1].rstrip(',')
 
 
 def parse_ssh_version(version):
-    major, minor = version.split('.', 1)
-    minor, patch = minor.split('p', 1)
-    return (major, minor, patch)
+  major, minor = version.split('.', 1)
+  minor, patch = minor.split('p', 1)
+  return (major, minor, patch)
 
 
 def ssh_keygen(type=None, passphrase='', comment=None, file=None):
