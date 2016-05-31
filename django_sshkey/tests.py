@@ -40,7 +40,7 @@ import tempfile
 from unittest import skipIf
 
 
-def ssh_version(ssh='ssh'):
+def ssh_version_name(ssh='ssh'):
     cmd = [ssh, '-V']
     try:
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
@@ -48,9 +48,12 @@ def ssh_version(ssh='ssh'):
         raise RuntimeError('OpenSSH is required to run the testing suite.')
     out = out.decode('ascii')
     out = out.split()[0]
-    out = out.split('_')[1].rstrip(',')
-    major, minor = out.split('.', 1)
-    minor, patch = minor.split('p')
+    return out.split('_')[1].rstrip(',')
+
+
+def parse_ssh_version(version):
+    major, minor = version.split('.', 1)
+    minor, patch = minor.split('p', 1)
     return (major, minor, patch)
 
 
@@ -111,7 +114,8 @@ def read_pubkey(path):
   return open(path).read().strip()
 
 
-SSH_VERSION = ssh_version()
+SSH_VERSION_NAME = ssh_version_name()
+SSH_VERSION = parse_ssh_version(SSH_VERSION_NAME)
 
 
 class BaseTestCase(TestCase):
@@ -590,14 +594,16 @@ class FingerprintTestCase(BaseTestCase):
     result = self.pubkey.fingerprint(hash='legacy')
     self.assertEqual(expected, result)
 
-  @skipIf(SSH_VERSION < ('6', '8'), 'OpenSSH 6.8+ required')
+  @skipIf(SSH_VERSION < ('6', '8'),
+          'OpenSSH 6.8+ required (%s found)' % SSH_VERSION_NAME)
   def test_fingerprint_md5(self):
     '''Matches OpenSSH's implementation of md5'''
     expected = ssh_fingerprint(self.pubkey_path, hash='md5')
     result = self.pubkey.fingerprint(hash='md5')
     self.assertEqual(expected, result)
 
-  @skipIf(SSH_VERSION < ('6', '8'), 'OpenSSH 6.8+ required')
+  @skipIf(SSH_VERSION < ('6', '8'),
+          'OpenSSH 6.8+ required (%s found)' % SSH_VERSION_NAME)
   def test_fingerprint_sha256(self):
     '''Matches OpenSSH's implementation of sha256'''
     expected = ssh_fingerprint(self.pubkey_path, hash='sha256')
