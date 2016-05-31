@@ -11,4 +11,4 @@ env:
 install:
   - travis_retry pip install "virtualenv<14.0.0" "tox>=1.9"
 script:
-  - tox -e $TOX_ENV
+  - tox -e $TOX_ENV -- -v 2
