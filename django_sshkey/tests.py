@@ -30,6 +30,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from django_sshkey.models import UserKey
 from django_sshkey import settings, util
@@ -225,6 +226,7 @@ class UserKeyCreationTestCase(BaseTestCase):
     self.assertRaises(ValidationError, key.full_clean)
 
   def test_fingerprint_legacy(self):
+    settings.SSHKEY_DEFAULT_HASH = 'legacy'
     fingerprint = ssh_fingerprint(self.key1_path + '.pub', hash='legacy')
     key = UserKey(
       user=self.user1,
@@ -468,6 +470,11 @@ class UserKeyLookupTestCase(BaseTestCase):
     cls.user1 = User.objects.create(username='user1')
     cls.user2 = User.objects.create(username='user2')
 
+    # We force legacy fingerprints here because it is compatible with pre-6.8
+    # OpenSSH and we can fake it in 6.8+ (see `ssh_fingerprint()`).
+    default_hash = settings.SSHKEY_DEFAULT_HASH
+    settings.SSHKEY_DEFAULT_HASH = 'legacy'
+
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(file=cls.key1_path)
     cls.key1 = UserKey(
@@ -497,6 +504,7 @@ class UserKeyLookupTestCase(BaseTestCase):
     )
     cls.key3.full_clean()
     cls.key3.save()
+    settings.SSHKEY_DEFAULT_HASH = default_hash
 
   @classmethod
   def tearDownClass(cls):
