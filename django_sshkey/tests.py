@@ -40,6 +40,8 @@ import subprocess
 import tempfile
 from unittest import skipIf
 
+DEVNULL = open(os.devnull, 'w')
+
 
 def ssh_version_name(ssh='ssh'):
   cmd = [ssh, '-V']
@@ -633,3 +635,76 @@ class FingerprintTestCase(BaseTestCase):
     with self.assertRaises(ValueError) as cm:
       self.pubkey.fingerprint(hash='xxx')
     self.assertEqual('Unknown hash type: xxx', cm.exception.args[0])
+
+
+class ManagementTestCase(BaseTestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    super(ManagementTestCase, cls).setUpClass()
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    cls.key3_path = os.path.join(cls.key_dir, 'key3')
+    cls.pubkey1_path = cls.key1_path + '.pub'
+    cls.pubkey2_path = cls.key2_path + '.pub'
+    cls.pubkey3_path = cls.key3_path + '.pub'
+    ssh_keygen(comment='key1', file=cls.key1_path)
+    ssh_keygen(comment='key2', file=cls.key2_path)
+    ssh_keygen(comment='key3', file=cls.key3_path)
+    cls.user1 = User.objects.create(username='user1')
+    cls.user2 = User.objects.create(username='user2')
+    cls.user3 = User.objects.create(username='user3')
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(ManagementTestCase, cls).setUpClass()
+
+  def setup_fixture(self):
+    '''Create a fixture with several keys with wrong fingerprints'''
+    call_command('import_sshkey', 'user1', self.pubkey1_path, stdout=DEVNULL)
+    call_command('import_sshkey', 'user1', self.pubkey2_path, stdout=DEVNULL)
+    call_command('import_sshkey', 'user2', self.pubkey3_path, stdout=DEVNULL)
+    self.key1 = UserKey.objects.get(name='key1')
+    self.key2 = UserKey.objects.get(name='key2')
+    self.key3 = UserKey.objects.get(name='key3')
+    self.wrong_fingerprint = ':'.join(['ff'] * 16)
+    UserKey.objects.update(fingerprint=self.wrong_fingerprint)
+
+  def test_import_sshkey1(self):
+    call_command('import_sshkey', 'user1', self.pubkey1_path, stdout=DEVNULL)
+    key = UserKey.objects.get()
+    self.assertEqual('key1', key.name)
+
+  def test_normalize_sshkey1(self):
+    '''Normalize all ssh keys'''
+    self.setup_fixture()
+    call_command('normalize_sshkeys', stdout=DEVNULL)
+    key1 = UserKey.objects.get(name='key1')
+    key2 = UserKey.objects.get(name='key2')
+    key3 = UserKey.objects.get(name='key3')
+    self.assertEqual(self.key1.fingerprint, key1.fingerprint)
+    self.assertEqual(self.key2.fingerprint, key2.fingerprint)
+    self.assertEqual(self.key3.fingerprint, key3.fingerprint)
+
+  def test_normalize_sshkey2(self):
+    '''Normalize keys belonging to a user'''
+    self.setup_fixture()
+    call_command('normalize_sshkeys', 'user1', stdout=DEVNULL)
+    key1 = UserKey.objects.get(name='key1')
+    key2 = UserKey.objects.get(name='key2')
+    key3 = UserKey.objects.get(name='key3')
+    self.assertEqual(self.key1.fingerprint, key1.fingerprint)
+    self.assertEqual(self.key2.fingerprint, key2.fingerprint)
+    self.assertEqual(self.wrong_fingerprint, key3.fingerprint)
+
+  def test_normalize_sshkey3(self):
+    '''Normalize a particular key of a user'''
+    self.setup_fixture()
+    call_command('normalize_sshkeys', 'user1', 'key1', stdout=DEVNULL)
+    key1 = UserKey.objects.get(name='key1')
+    key2 = UserKey.objects.get(name='key2')
+    key3 = UserKey.objects.get(name='key3')
+    self.assertEqual(self.key1.fingerprint, key1.fingerprint)
+    self.assertEqual(self.wrong_fingerprint, key2.fingerprint)
+    self.assertEqual(self.wrong_fingerprint, key3.fingerprint)
