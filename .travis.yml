@@ -1,6 +1,5 @@
 language: python
 env:
-  - TOX_ENV=django16
   - TOX_ENV=django18
   - TOX_ENV=django19
   - TOX_ENV=py33
