@@ -32,11 +32,12 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django_sshkey.models import UserKey
-from django_sshkey import settings
+from django_sshkey import settings, util
 import os
 import shutil
 import subprocess
 import tempfile
+from unittest import skipIf
 
 
 def ssh_version(ssh='ssh'):
@@ -93,6 +94,8 @@ def ssh_fingerprint(pubkey_path, hash=None):
 
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
   stdout, stderr = p.communicate()
+  if p.returncode != 0:
+    raise subprocess.CalledProcessError(p.returncode, cmd)
   fingerprint = stdout.split(None, 2)[1]
   fingerprint = fingerprint.decode('ascii')
 
@@ -141,7 +144,11 @@ class UserKeyCreationTestCase(BaseTestCase):
     User.objects.all().delete()
     super(UserKeyCreationTestCase, cls).tearDownClass()
 
+  def setUp(self):
+    self._default_hash = settings.SSHKEY_DEFAULT_HASH
+
   def tearDown(self):
+    settings.SSHKEY_DEFAULT_HASH = self._default_hash
     UserKey.objects.all().delete()
 
   def test_with_name_with_comment(self):
@@ -213,7 +220,7 @@ class UserKeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
-  def test_fingerprint(self):
+  def test_fingerprint_legacy(self):
     fingerprint = ssh_fingerprint(self.key1_path + '.pub', hash='legacy')
     key = UserKey(
       user=self.user1,
@@ -223,6 +230,28 @@ class UserKeyCreationTestCase(BaseTestCase):
     key.full_clean()
     key.save()
     self.assertEqual(key.fingerprint, fingerprint)
+
+  def test_fingerprint_sha256(self):
+    settings.SSHKEY_DEFAULT_HASH = 'sha256'
+    key = UserKey(
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertTrue(key.fingerprint.startswith('SHA256:'))
+
+  def test_fingerprint_md5(self):
+    settings.SSHKEY_DEFAULT_HASH = 'md5'
+    key = UserKey(
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertTrue(key.fingerprint.startswith('MD5:'))
 
   def test_touch(self):
     import datetime
@@ -544,3 +573,49 @@ class UserKeyLookupTestCase(BaseTestCase):
     url = reverse('django_sshkey.views.lookup')
     response = self.client.get(url, {'username': 'batman'})
     self.assertHasKeys(response, [])
+
+
+class FingerprintTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(FingerprintTestCase, cls).setUpClass()
+    cls.key_path = os.path.join(cls.key_dir, 'key1')
+    cls.pubkey_path = cls.key_path + '.pub'
+    ssh_keygen(comment='comment', file=cls.key_path)
+    cls.pubkey = util.pubkey_parse(read_pubkey(cls.key_path + '.pub'))
+
+  def test_fingerprint_legacy(self):
+    '''Check legacy fingerprints'''
+    expected = ssh_fingerprint(self.pubkey_path, hash='legacy')
+    result = self.pubkey.fingerprint(hash='legacy')
+    self.assertEqual(expected, result)
+
+  @skipIf(SSH_VERSION < ('6', '8'), 'OpenSSH 6.8+ required')
+  def test_fingerprint_md5(self):
+    '''Matches OpenSSH's implementation of md5'''
+    expected = ssh_fingerprint(self.pubkey_path, hash='md5')
+    result = self.pubkey.fingerprint(hash='md5')
+    self.assertEqual(expected, result)
+
+  @skipIf(SSH_VERSION < ('6', '8'), 'OpenSSH 6.8+ required')
+  def test_fingerprint_sha256(self):
+    '''Matches OpenSSH's implementation of sha256'''
+    expected = ssh_fingerprint(self.pubkey_path, hash='sha256')
+    result = self.pubkey.fingerprint(hash='sha256')
+    self.assertEqual(expected, result)
+
+  def test_fingerprint_md5_prefix(self):
+    '''Has MD5: prefix'''
+    result = self.pubkey.fingerprint(hash='md5')
+    self.assertTrue(result.startswith('MD5:'))
+
+  def test_fingerprint_sha256_prefix(self):
+    '''Has SHA256: prefix'''
+    result = self.pubkey.fingerprint(hash='sha256')
+    self.assertTrue(result.startswith('SHA256:'))
+
+  def test_fingerprint_invalid_hash_name(self):
+    '''Fails for bad hash names'''
+    with self.assertRaises(ValueError) as cm:
+      self.pubkey.fingerprint(hash='xxx')
+    self.assertEqual('Unknown hash type: xxx', cm.exception.args[0])

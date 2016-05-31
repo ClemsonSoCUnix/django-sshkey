@@ -43,3 +43,5 @@ SSHKEY_FROM_EMAIL = getattr(
   settings, 'SSHKEY_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)
 SSHKEY_SEND_HTML_EMAIL = getattr(
   settings, 'SSHKEY_SEND_HTML_EMAIL', False)
+SSHKEY_DEFAULT_HASH = getattr(
+  settings, 'SSHKEY_DEFAULT_HASH', 'legacy')

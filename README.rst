@@ -83,6 +83,12 @@ Settings
   Note that no email will be sent in any case when a key is edited, hence the
   reason that editing keys is disabled by default.  New in version 2.3.
 
+``SSHKEY_DEFAULT_HASH``
+  String, either ``sha256``, ``md5``, or ``legacy`` (the default).  The default
+  hash algorithm to use for calculating the finger print of keys.  Legacy
+  behavior enforces OpenSSH's pre-6.8 behavior of MD5 without the ``MD5:``
+  prefix.  New in version 2.5.
+
 ``SSHKEY_EMAIL_ADD_KEY``
   Boolean, defaults to ``True``.  Whether or not an email should be sent to the
   user when a new key is added to their account.  New in version 2.3.
