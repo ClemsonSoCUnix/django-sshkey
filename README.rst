@@ -122,6 +122,23 @@ Example templates are available in the ``templates.example`` directory.
 ``sshkey/add_key.html``
   The HTML body of the email sent when a new key is added.  New in version 2.3.
 
+Management commands
+-------------------
+
+``import_sshkey [--auto-resolve] [--prefix PREFIX] [--name NAME] USERNAME KEY_PATH ...``
+  Imports SSH public keys to tie to a user. If ``--auto-resolve/-a`` are given,
+  attempt to generate unique key names using a UUID. The prefix used during
+  this process is the key name, but can be changed using ``--prefix/-p``.
+
+``normalize_sshkeys [USERNAME KEY_NAME]``
+  Recalculates key data to reflect a changed setting, for instance, if you have
+  changed ``SSHKEY_DEFAULT_HASH`` and some keys have incorrect fingerprints in
+  your database. Given no arguments, all keys will be normalized. The username
+  asnd key name are optional, and if specified, will limit affected keys to
+  those owned by a user, or a particular key of a user.  This can also be done
+  via the administration panel, but if you have a large key database the
+  request could end up timing out.
+
 Tying OpenSSH to django-sshkey
 ==============================
 
@@ -174,6 +191,33 @@ Default
   keys owned by the specified user; otherwise perform the same functionality as
   ``django-sshkey-lookup-by-fingerprint`` (see below).
 
+Starting with OpenSSH 6.9 and above, the ``AuthorizedKeysCommand`` directive
+supports the use of user-specified command line arguments, and different
+details about the authentication attempt are available to pass to the program.
+This makes ``django-sshkey-lookup`` a good fit for later versions of the
+OpenSSH server.
+
+::
+
+  # Show all available public keys
+  AuthorizedKeysCommand /usr/local/bin/django-sshkey-lookup -a URL
+
+  # Filter keys owned by Django user (assuming the user matches)
+  AuthorizedKeysCommand /usr/local/bin/django-sshkey-lookup -u URL %u
+
+  # Filter keys matching a sha256 fingerprint
+  AuthorizedKeysCommand /usr/local/bin/django-sshkey-lookup -f URL %f
+
+.. note::
+
+  If you choose to use OpenSSH's ``%f`` to filter by key fingerprint, know that
+  it provides the sha256 fingerprint of the key by default. You can change the
+  ``FingerprintHash`` directive in ``sshd_config`` to ``md5``, but in either
+  case you will need to set django-sshkey's ``SSHKEY_DEFAULT_HASH`` setting to
+  ``sha256`` or ``md5`` to match. By default, django-sshkey emulates OpenSSH's
+  pre-6.8 fingerprint behavior, which is a slightly different representation of
+  an md5 hash. This is so it is backwards-compatible with its pre-2.5 behavior.
+
 All modes expect that the lookup URL be specified as the first non-option
 parameter.
 
@@ -193,8 +237,8 @@ server.
 
 This program:
 
-* can be used directly with ``AuthorizedKeysCommand`` (the username parameter
-  is ignored).
+* can be used directly with pre-6.9 ``AuthorizedKeysCommand`` (the username
+  parameter is ignored).
 
 * does not require a patched OpenSSH server.
 
@@ -210,7 +254,7 @@ user.
 
 This program:
 
-* can be used directly with ``AuthorizedKeysCommand``.
+* can be used directly with pre-6.9 ``AuthorizedKeysCommand``.
 
 * does not require a patched OpenSSH server.
 
