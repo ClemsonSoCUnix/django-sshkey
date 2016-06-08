@@ -45,7 +45,7 @@ class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
   name = models.CharField(max_length=50, blank=True)
   key = models.TextField(max_length=2000)
-  fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
+  fingerprint = models.CharField(max_length=128, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
   last_modified = models.DateTimeField(null=True)
   last_used = models.DateTimeField(null=True)

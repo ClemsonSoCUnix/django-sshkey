@@ -30,13 +30,34 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from django_sshkey.models import UserKey
-from django_sshkey import settings
+from django_sshkey import settings, util
 import os
 import shutil
 import subprocess
 import tempfile
+from unittest import skipIf
+
+DEVNULL = open(os.devnull, 'w')
+
+
+def ssh_version_name(ssh='ssh'):
+  cmd = [ssh, '-V']
+  try:
+    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+  except subprocess.CalledProcessError:
+    raise RuntimeError('OpenSSH is required to run the testing suite.')
+  out = out.decode('ascii')
+  out = out.split()[0]
+  return out.split('_')[1].rstrip(',')
+
+
+def parse_ssh_version(version):
+  major, minor = version.split('.', 1)
+  minor, patch = minor.split('p', 1)
+  return (major, minor, patch)
 
 
 def ssh_keygen(type=None, passphrase='', comment=None, file=None):
@@ -64,17 +85,40 @@ def ssh_key_import(input_path, output_path, format='RFC4716'):
     subprocess.check_call(cmd, stdout=f)
 
 
-def ssh_fingerprint(pubkey_path):
+def ssh_fingerprint(pubkey_path, hash=None):
   cmd = ['ssh-keygen', '-lf', pubkey_path]
+
+  # Legacy mode ensures the fingeprint is always a non-prefixed MD5 hash of the
+  # key, regardless of which version of OpenSSH is installed.
+  legacy = hash == 'legacy'
+  if legacy and SSH_VERSION < ('6', '8'):
+    hash = None
+  elif legacy:
+    hash = 'md5'
+  if hash is not None:
+    cmd.extend(['-E', hash])
+
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
   stdout, stderr = p.communicate()
+  if p.returncode != 0:
+    raise subprocess.CalledProcessError(p.returncode, cmd)
   fingerprint = stdout.split(None, 2)[1]
-  return fingerprint.decode('ascii')
+  fingerprint = fingerprint.decode('ascii')
+
+  # Strip off the prefix in legacy mode if found.
+  if legacy and fingerprint.startswith('MD5:'):
+    fingerprint = fingerprint[len('MD5:'):]
+
+  return fingerprint
 
 
 def read_pubkey(path):
   '''Read an OpenSSH formatted public key'''
   return open(path).read().strip()
+
+
+SSH_VERSION_NAME = ssh_version_name()
+SSH_VERSION = parse_ssh_version(SSH_VERSION_NAME)
 
 
 class BaseTestCase(TestCase):
@@ -107,7 +151,11 @@ class UserKeyCreationTestCase(BaseTestCase):
     User.objects.all().delete()
     super(UserKeyCreationTestCase, cls).tearDownClass()
 
+  def setUp(self):
+    self._default_hash = settings.SSHKEY_DEFAULT_HASH
+
   def tearDown(self):
+    settings.SSHKEY_DEFAULT_HASH = self._default_hash
     UserKey.objects.all().delete()
 
   def test_with_name_with_comment(self):
@@ -179,8 +227,9 @@ class UserKeyCreationTestCase(BaseTestCase):
     )
     self.assertRaises(ValidationError, key.full_clean)
 
-  def test_fingerprint(self):
-    fingerprint = ssh_fingerprint(self.key1_path + '.pub')
+  def test_fingerprint_legacy(self):
+    settings.SSHKEY_DEFAULT_HASH = 'legacy'
+    fingerprint = ssh_fingerprint(self.key1_path + '.pub', hash='legacy')
     key = UserKey(
       user=self.user1,
       name='name',
@@ -189,6 +238,28 @@ class UserKeyCreationTestCase(BaseTestCase):
     key.full_clean()
     key.save()
     self.assertEqual(key.fingerprint, fingerprint)
+
+  def test_fingerprint_sha256(self):
+    settings.SSHKEY_DEFAULT_HASH = 'sha256'
+    key = UserKey(
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertTrue(key.fingerprint.startswith('SHA256:'))
+
+  def test_fingerprint_md5(self):
+    settings.SSHKEY_DEFAULT_HASH = 'md5'
+    key = UserKey(
+      user=self.user1,
+      name='name',
+      key=open(self.key1_path + '.pub').read(),
+    )
+    key.full_clean()
+    key.save()
+    self.assertTrue(key.fingerprint.startswith('MD5:'))
 
   def test_touch(self):
     import datetime
@@ -401,6 +472,11 @@ class UserKeyLookupTestCase(BaseTestCase):
     cls.user1 = User.objects.create(username='user1')
     cls.user2 = User.objects.create(username='user2')
 
+    # We force legacy fingerprints here because it is compatible with pre-6.8
+    # OpenSSH and we can fake it in 6.8+ (see `ssh_fingerprint()`).
+    default_hash = settings.SSHKEY_DEFAULT_HASH
+    settings.SSHKEY_DEFAULT_HASH = 'legacy'
+
     cls.key1_path = os.path.join(cls.key_dir, 'key1')
     ssh_keygen(file=cls.key1_path)
     cls.key1 = UserKey(
@@ -430,9 +506,7 @@ class UserKeyLookupTestCase(BaseTestCase):
     )
     cls.key3.full_clean()
     cls.key3.save()
-
-    cls.key4_path = os.path.join(cls.key_dir, 'key4')
-    ssh_keygen(file=cls.key4_path)
+    settings.SSHKEY_DEFAULT_HASH = default_hash
 
   @classmethod
   def tearDownClass(cls):
@@ -469,7 +543,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_by_fingerprint(self):
     url = reverse('django_sshkey.views.lookup')
-    fingerprint = ssh_fingerprint(self.key1_path + '.pub')
+    fingerprint = ssh_fingerprint(self.key1_path + '.pub', hash='legacy')
     response = self.client.get(url, {'fingerprint': fingerprint})
     self.assertHasKeys(response, [
       'command="user1 %s" %s' % (
@@ -505,7 +579,7 @@ class UserKeyLookupTestCase(BaseTestCase):
 
   def test_lookup_nonexist_fingerprint(self):
     url = reverse('django_sshkey.views.lookup')
-    fingerprint = ssh_fingerprint(self.key4_path + '.pub')
+    fingerprint = ':'.join(['ff'] * 16)
     response = self.client.get(url, {'fingerprint': fingerprint})
     self.assertHasKeys(response, [])
 
@@ -513,3 +587,124 @@ class UserKeyLookupTestCase(BaseTestCase):
     url = reverse('django_sshkey.views.lookup')
     response = self.client.get(url, {'username': 'batman'})
     self.assertHasKeys(response, [])
+
+
+class FingerprintTestCase(BaseTestCase):
+  @classmethod
+  def setUpClass(cls):
+    super(FingerprintTestCase, cls).setUpClass()
+    cls.key_path = os.path.join(cls.key_dir, 'key1')
+    cls.pubkey_path = cls.key_path + '.pub'
+    ssh_keygen(comment='comment', file=cls.key_path)
+    cls.pubkey = util.pubkey_parse(read_pubkey(cls.key_path + '.pub'))
+
+  def test_fingerprint_legacy(self):
+    '''Check legacy fingerprints'''
+    expected = ssh_fingerprint(self.pubkey_path, hash='legacy')
+    result = self.pubkey.fingerprint(hash='legacy')
+    self.assertEqual(expected, result)
+
+  @skipIf(SSH_VERSION < ('6', '8'),
+          'OpenSSH 6.8+ required (%s found)' % SSH_VERSION_NAME)
+  def test_fingerprint_md5(self):
+    '''Matches OpenSSH's implementation of md5'''
+    expected = ssh_fingerprint(self.pubkey_path, hash='md5')
+    result = self.pubkey.fingerprint(hash='md5')
+    self.assertEqual(expected, result)
+
+  @skipIf(SSH_VERSION < ('6', '8'),
+          'OpenSSH 6.8+ required (%s found)' % SSH_VERSION_NAME)
+  def test_fingerprint_sha256(self):
+    '''Matches OpenSSH's implementation of sha256'''
+    expected = ssh_fingerprint(self.pubkey_path, hash='sha256')
+    result = self.pubkey.fingerprint(hash='sha256')
+    self.assertEqual(expected, result)
+
+  def test_fingerprint_md5_prefix(self):
+    '''Has MD5: prefix'''
+    result = self.pubkey.fingerprint(hash='md5')
+    self.assertTrue(result.startswith('MD5:'))
+
+  def test_fingerprint_sha256_prefix(self):
+    '''Has SHA256: prefix'''
+    result = self.pubkey.fingerprint(hash='sha256')
+    self.assertTrue(result.startswith('SHA256:'))
+
+  def test_fingerprint_invalid_hash_name(self):
+    '''Fails for bad hash names'''
+    with self.assertRaises(ValueError) as cm:
+      self.pubkey.fingerprint(hash='xxx')
+    self.assertEqual('Unknown hash type: xxx', cm.exception.args[0])
+
+
+class ManagementTestCase(BaseTestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    super(ManagementTestCase, cls).setUpClass()
+    cls.key1_path = os.path.join(cls.key_dir, 'key1')
+    cls.key2_path = os.path.join(cls.key_dir, 'key2')
+    cls.key3_path = os.path.join(cls.key_dir, 'key3')
+    cls.pubkey1_path = cls.key1_path + '.pub'
+    cls.pubkey2_path = cls.key2_path + '.pub'
+    cls.pubkey3_path = cls.key3_path + '.pub'
+    ssh_keygen(comment='key1', file=cls.key1_path)
+    ssh_keygen(comment='key2', file=cls.key2_path)
+    ssh_keygen(comment='key3', file=cls.key3_path)
+    cls.user1 = User.objects.create(username='user1')
+    cls.user2 = User.objects.create(username='user2')
+    cls.user3 = User.objects.create(username='user3')
+
+  @classmethod
+  def tearDownClass(cls):
+    User.objects.all().delete()
+    super(ManagementTestCase, cls).setUpClass()
+
+  def setup_fixture(self):
+    '''Create a fixture with several keys with wrong fingerprints'''
+    call_command('import_sshkey', 'user1', self.pubkey1_path, stdout=DEVNULL)
+    call_command('import_sshkey', 'user1', self.pubkey2_path, stdout=DEVNULL)
+    call_command('import_sshkey', 'user2', self.pubkey3_path, stdout=DEVNULL)
+    self.key1 = UserKey.objects.get(name='key1')
+    self.key2 = UserKey.objects.get(name='key2')
+    self.key3 = UserKey.objects.get(name='key3')
+    self.wrong_fingerprint = ':'.join(['ff'] * 16)
+    UserKey.objects.update(fingerprint=self.wrong_fingerprint)
+
+  def test_import_sshkey1(self):
+    call_command('import_sshkey', 'user1', self.pubkey1_path, stdout=DEVNULL)
+    key = UserKey.objects.get()
+    self.assertEqual('key1', key.name)
+
+  def test_normalize_sshkey1(self):
+    '''Normalize all ssh keys'''
+    self.setup_fixture()
+    call_command('normalize_sshkeys', stdout=DEVNULL)
+    key1 = UserKey.objects.get(name='key1')
+    key2 = UserKey.objects.get(name='key2')
+    key3 = UserKey.objects.get(name='key3')
+    self.assertEqual(self.key1.fingerprint, key1.fingerprint)
+    self.assertEqual(self.key2.fingerprint, key2.fingerprint)
+    self.assertEqual(self.key3.fingerprint, key3.fingerprint)
+
+  def test_normalize_sshkey2(self):
+    '''Normalize keys belonging to a user'''
+    self.setup_fixture()
+    call_command('normalize_sshkeys', 'user1', stdout=DEVNULL)
+    key1 = UserKey.objects.get(name='key1')
+    key2 = UserKey.objects.get(name='key2')
+    key3 = UserKey.objects.get(name='key3')
+    self.assertEqual(self.key1.fingerprint, key1.fingerprint)
+    self.assertEqual(self.key2.fingerprint, key2.fingerprint)
+    self.assertEqual(self.wrong_fingerprint, key3.fingerprint)
+
+  def test_normalize_sshkey3(self):
+    '''Normalize a particular key of a user'''
+    self.setup_fixture()
+    call_command('normalize_sshkeys', 'user1', 'key1', stdout=DEVNULL)
+    key1 = UserKey.objects.get(name='key1')
+    key2 = UserKey.objects.get(name='key2')
+    key3 = UserKey.objects.get(name='key3')
+    self.assertEqual(self.key1.fingerprint, key1.fingerprint)
+    self.assertEqual(self.wrong_fingerprint, key2.fingerprint)
+    self.assertEqual(self.wrong_fingerprint, key3.fingerprint)

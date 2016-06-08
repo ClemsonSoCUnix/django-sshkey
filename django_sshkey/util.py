@@ -27,6 +27,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from . import settings
+
 import base64
 import binascii
 import struct
@@ -92,10 +94,23 @@ class PublicKey(object):
       self.parts.append(data)
     self.algorithm = self.parts[0].decode('ascii')
 
-  def fingerprint(self):
+  def fingerprint(self, hash=None):
     import hashlib
-    fp = hashlib.md5(self.keydata).hexdigest()
-    return ':'.join(a + b for a, b in zip(fp[::2], fp[1::2]))
+    if hash is None:
+      hash = settings.SSHKEY_DEFAULT_HASH
+    if hash in ('md5', 'legacy'):
+      fp = hashlib.md5(self.keydata).hexdigest()
+      fp = ':'.join(a + b for a, b in zip(fp[::2], fp[1::2]))
+      if hash == 'md5':
+        return 'MD5:' + fp
+      else:
+        return fp
+    elif hash == 'sha256':
+      fp = hashlib.sha256(self.keydata).digest()
+      fp = base64.b64encode(fp).decode('ascii').rstrip('=')
+      return 'SHA256:' + fp
+    else:
+      raise ValueError('Unknown hash type: %s' % hash)
 
   def format_openssh(self):
     out = self.algorithm + ' ' + self.b64key

@@ -31,6 +31,15 @@ from django.contrib import admin
 from django_sshkey.models import UserKey
 
 
+def normalize_user_key(modeladmin, request, queryset):
+  for key in queryset:
+    key.full_clean()
+    key.save()
+  count = queryset.count()
+  message = '%d user key(s) normalized' % count
+  modeladmin.message_user(request, message)
+
+
 class UserKeyAdmin(admin.ModelAdmin):
   list_display = [
     '__unicode__',
@@ -49,6 +58,9 @@ class UserKeyAdmin(admin.ModelAdmin):
     'created',
     'last_modified',
     'last_used',
+  ]
+  actions = [
+    normalize_user_key,
   ]
 
 admin.site.register(UserKey, UserKeyAdmin)
