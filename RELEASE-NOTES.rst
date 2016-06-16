@@ -2,6 +2,20 @@
 Release Notes for django-sshkey
 ===============================
 
+2.5.0 (2016-06-16)
+------------------
+
+Migration label: 0002
+
+* Stop testing against Django 1.4 through 1.7.
+* Start testing against Django 1.9.
+* Support for Python 3.3 and 3.4 (issue #6).
+* Support OpenSSH 6.8+ MD5 and SHA256 fingerprints (issue #5). Also makes
+  django-sshkey compatible with fingerprints of unpatched OpenSSH 6.9+
+  ``AuthorizedKeysCommand`` (issue #3). Add ``SSHKEY_DEFAULT_HASH`` setting.
+* Add ``import_sshkey`` and ``normalize_sshkeys`` management commands.
+* Code formatting cleanup.
+
 2.4.0 (2015-09-21)
 ------------------
 
