@@ -20,6 +20,8 @@ The following table maps django-sshkey version to migration labels:
 +---------+---------------+-------+------------------------------------------+
 | 2.4     | django_sshkey | 0001  | Django native migrations started.        |
 +---------+---------------+-------+------------------------------------------+
+| 2.5     | django_sshkey | 0002  |                                          |
++---------+---------------+-------+------------------------------------------+
 
 To upgrade, install the new version of django-sshkey and then migrate your
 project to its corresponding label from the table above using the following

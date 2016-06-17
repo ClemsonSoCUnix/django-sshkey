@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2015, Clemson University
+# Copyright (c) 2014-2016, Clemson University
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -11,20 +11,21 @@
 #   this list of conditions and the following disclaimer in the documentation
 #   and/or other materials provided with the distribution.
 #
-# * Neither the name of the {organization} nor the names of its
+# * Neither the name of Clemson University nor the names of its
 #   contributors may be used to endorse or promote products derived from
 #   this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -39,11 +40,12 @@ except ImportError:
 from django_sshkey.util import PublicKeyParseError, pubkey_parse
 from django_sshkey import settings
 
+
 class UserKey(models.Model):
   user = models.ForeignKey(User, db_index=True)
   name = models.CharField(max_length=50, blank=True)
   key = models.TextField(max_length=2000)
-  fingerprint = models.CharField(max_length=47, blank=True, db_index=True)
+  fingerprint = models.CharField(max_length=128, blank=True, db_index=True)
   created = models.DateTimeField(auto_now_add=True, null=True)
   last_modified = models.DateTimeField(null=True)
   last_used = models.DateTimeField(null=True)
@@ -116,6 +118,7 @@ class UserKey(models.Model):
     self.last_used = now()
     self.save(update_last_modified=False)
 
+
 @receiver(pre_save, sender=UserKey)
 def send_email_add_key(sender, instance, **kwargs):
   if not settings.SSHKEY_EMAIL_ADD_KEY or instance.pk:
@@ -130,7 +133,8 @@ def send_email_add_key(sender, instance, **kwargs):
   request = getattr(instance, 'request', None)
   if request:
     context_dict['request'] = request
-    context_dict['userkey_list_uri'] = request.build_absolute_uri(reverse('django_sshkey.views.userkey_list'))
+    context_dict['userkey_list_uri'] = request.build_absolute_uri(
+      reverse('django_sshkey.views.userkey_list'))
   text_content = render_to_string('sshkey/add_key.txt', context_dict)
   msg = EmailMultiAlternatives(
     settings.SSHKEY_EMAIL_ADD_KEY_SUBJECT,
